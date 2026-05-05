@@ -29,6 +29,12 @@ async function bootstrap() {
 
   const adminSlug = config.get<string>('ADMIN_SLUG', 'admin-xyz').replace(/^\/+|\/+$/g, '');
   const adminDist = join(process.cwd(), config.get<string>('ADMIN_DIST', '../olmedia-cms-admin/dist'));
+  app.use(`/${apiPrefix}/health`, (_req: Request, res: Response) => {
+    res.json({ ok: true, service: 'OlMedia CMS API' });
+  });
+  app.use(/^\/$/, (_req: Request, res: Response) => {
+    res.redirect(302, `/${adminSlug}/`);
+  });
   app.use(new RegExp(`^/${adminSlug}$`), (_req: Request, res: Response) => {
     res.redirect(301, `/${adminSlug}/`);
   });
