@@ -5,7 +5,7 @@ import cookieParser = require('cookie-parser');
 import helmet from 'helmet';
 import express = require('express');
 import type { Request, Response } from 'express';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
@@ -28,7 +28,8 @@ async function bootstrap() {
   });
 
   const adminSlug = config.get<string>('ADMIN_SLUG', 'admin-xyz').replace(/^\/+|\/+$/g, '');
-  const adminDist = join(process.cwd(), config.get<string>('ADMIN_DIST', '../olmedia-cms-admin/dist'));
+  const adminDistConfig = config.get<string>('ADMIN_DIST', '../olmedia-cms-admin/dist');
+  const adminDist = isAbsolute(adminDistConfig) ? adminDistConfig : join(process.cwd(), adminDistConfig);
   app.use(`/${apiPrefix}/health`, (_req: Request, res: Response) => {
     res.json({ ok: true, service: 'OlMedia CMS API' });
   });
