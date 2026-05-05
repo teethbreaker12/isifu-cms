@@ -1,0 +1,30 @@
+# OlMedia CMS backend
+isifu-cms-backend/node_modules/
+isifu-cms-backend/dist/
+isifu-cms-backend/uploads/
+isifu-cms-backend/.env
+isifu-cms-backend/.env.*
+!isifu-cms-backend/.env.example
+isifu-cms-backend/*.tsbuildinfo
+isifu-cms-backend/npm-debug.log*
+isifu-cms-backend/yarn-debug.log*
+isifu-cms-backend/yarn-error.log*
+isifu-cms-backend/pnpm-debug.log*
+
+# OlMedia CMS admin
+isifu-cms-admin/node_modules/
+isifu-cms-admin/dist/
+isifu-cms-admin/.env
+isifu-cms-admin/.env.*
+!isifu-cms-admin/.env.example
+isifu-cms-admin/*.tsbuildinfo
+isifu-cms-admin/npm-debug.log*
+isifu-cms-admin/yarn-debug.log*
+isifu-cms-admin/yarn-error.log*
+isifu-cms-admin/pnpm-debug.log*
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

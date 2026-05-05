@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+}
+
+model User {
+  id                 Int      @id @default(autoincrement())
+  email              String   @unique
+  name               String?
+  passwordHash       String
+  role               Role     @default(EDITOR)
+  twoFactorEnabled   Boolean  @default(false)
+  twoFactorSecret    String?  @db.Text
+  refreshTokenHash   String?  @db.Text
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model ContentType {
+  id          Int            @id @default(autoincrement())
+  name        String
+  key         String         @unique
+  description String?
+  tableName   String         @unique
+  fields      ContentField[]
+  entries     ContentEntry[]
+  pages       Page[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model ContentField {
+  id            Int         @id @default(autoincrement())
+  contentTypeId Int
+  contentType   ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  label         String
+  key           String
+  type          String
+  required      Boolean     @default(false)
+  settings      Json?
+  order         Int         @default(0)
+
+  @@unique([contentTypeId, key])
+}
+
+model ContentEntry {
+  id            Int         @id @default(autoincrement())
+  contentTypeId Int
+  contentType   ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  dynamicRowId  Int?
+  slug          String?
+  status        String      @default("draft")
+  data          Json
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([contentTypeId, slug])
+}
+
+model Page {
+  id            Int          @id @default(autoincrement())
+  slug          String       @unique
+  title         String
+  seoTitle      String?
+  seoDescription String?     @db.Text
+  contentTypeId Int?
+  contentType   ContentType? @relation(fields: [contentTypeId], references: [id], onDelete: SetNull)
+  entryId       Int?
+  blocks        Json?
+  published     Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model MediaAsset {
+  id        Int      @id @default(autoincrement())
+  filename  String
+  originalName String
+  mimeType  String
+  size      Int
+  url       String
+  storage   String   @default("local")
+  createdAt DateTime @default(now())
+}
