@@ -1,4 +1,5 @@
 import type { ContentField } from '../types/cms';
+import { LucideIconField } from './LucideIconField';
 import { MediaPicker } from './MediaPicker';
 import { RichTextEditor } from './RichTextEditor';
 
@@ -31,6 +32,8 @@ export function DynamicForm({ fields, value, onChange }: Props) {
               maxItems={Number(field.settings?.maxItems || 0)}
               onChange={(next) => setField(field.key, next)}
             />
+          ) : field.type === 'lucideIcon' ? (
+            <LucideIconField value={String(value[field.key] ?? '')} onChange={(next) => setField(field.key, next)} />
           ) : field.type === 'boolean' ? (
             <input
               type="checkbox"

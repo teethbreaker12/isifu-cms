@@ -1,9 +1,10 @@
-export const FIELD_TYPES = ['text', 'textarea', 'richtext', 'image', 'boolean', 'repeater'] as const;
+export const FIELD_TYPES = ['text', 'textarea', 'richtext', 'image', 'lucideIcon', 'boolean', 'repeater'] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 
 export function columnTypeForField(type: FieldType): string {
   switch (type) {
     case 'text':
+    case 'lucideIcon':
       return 'VARCHAR(512) NULL';
     case 'image':
       return 'JSON NULL';
@@ -22,5 +23,6 @@ export function normalizeFieldValue(type: FieldType, value: unknown) {
   if (type === 'boolean') return Boolean(value);
   if (type === 'repeater') return Array.isArray(value) ? value : [];
   if (type === 'textarea' || type === 'richtext') return typeof value === 'object' ? value : value ?? null;
+  if (type === 'lucideIcon') return typeof value === 'string' ? value : null;
   return value ?? null;
 }

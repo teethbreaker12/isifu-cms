@@ -1,5 +1,5 @@
 export type Role = 'ADMIN' | 'EDITOR';
-export type FieldType = 'text' | 'textarea' | 'richtext' | 'image' | 'boolean' | 'repeater';
+export type FieldType = 'text' | 'textarea' | 'richtext' | 'image' | 'lucideIcon' | 'boolean' | 'repeater';
 
 export type User = {
   id: number;
@@ -49,7 +49,7 @@ export type Page = {
 
 export type PageBlock = {
   id: string;
-  type: 'hero' | 'text' | 'textarea' | 'richtext' | 'image' | 'boolean' | 'repeater' | 'cta' | 'entry';
+  type: 'hero' | 'text' | 'textarea' | 'richtext' | 'image' | 'lucideIcon' | 'boolean' | 'repeater' | 'cta' | 'entry';
   props: Record<string, unknown>;
 };
 

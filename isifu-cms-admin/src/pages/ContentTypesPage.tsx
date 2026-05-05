@@ -81,7 +81,7 @@ export function ContentTypesPage() {
                 <input className="rounded-md border border-stone-300 px-3 py-2" placeholder={t('models.fieldLabelPlaceholder')} value={field.label} onChange={(event) => setFields(fields.map((item, i) => (i === index ? { ...item, label: event.target.value } : item)))} />
                 <input className="rounded-md border border-stone-300 px-3 py-2" placeholder={t('models.fieldKeyPlaceholder')} value={field.key} onChange={(event) => setFields(fields.map((item, i) => (i === index ? { ...item, key: event.target.value } : item)))} />
                 <select className="rounded-md border border-stone-300 px-3 py-2" value={field.type} onChange={(event) => setFields(fields.map((item, i) => (i === index ? { ...item, type: event.target.value as FieldType, settings: event.target.value === 'image' ? item.settings : undefined } : item)))}>
-                  {(['text', 'textarea', 'richtext', 'image', 'boolean', 'repeater'] as FieldType[]).map((type) => <option key={type} value={type}>{t(`fields.${type}`)}</option>)}
+                  {(['text', 'textarea', 'richtext', 'image', 'lucideIcon', 'boolean', 'repeater'] as FieldType[]).map((type) => <option key={type} value={type}>{t(`fields.${type}`)}</option>)}
                 </select>
                 <label className="flex items-center gap-2 text-sm text-stone-600">
                   <input type="checkbox" checked={field.required} onChange={(event) => setFields(fields.map((item, i) => (i === index ? { ...item, required: event.target.checked } : item)))} />

@@ -25,12 +25,13 @@ function SortableBlock({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: block.id, disabled: !canManageStructure });
   const setProp = (key: string, value: unknown) => onChange({ ...block, props: { ...block.props, [key]: value } });
-  const fieldBlockTypes = ['text', 'textarea', 'richtext', 'image', 'boolean', 'repeater'];
+  const fieldBlockTypes = ['text', 'textarea', 'richtext', 'image', 'lucideIcon', 'boolean', 'repeater'];
   const blockLabel = {
     text: t('fields.text'),
     textarea: t('fields.textarea'),
     richtext: t('fields.richtext'),
     image: t('fields.image'),
+    lucideIcon: t('fields.lucideIcon'),
     boolean: t('fields.boolean'),
     repeater: t('fields.repeater'),
     hero: t('pageBuilder.hero'),
@@ -56,6 +57,7 @@ function SortableBlock({
             <option value="textarea">{t('fields.textarea')}</option>
             <option value="richtext">{t('fields.richtext')}</option>
             <option value="image">{t('pageBuilder.image')}</option>
+            <option value="lucideIcon">{t('fields.lucideIcon')}</option>
             <option value="boolean">{t('fields.boolean')}</option>
             <option value="repeater">{t('fields.repeater')}</option>
             <option value="hero">{t('pageBuilder.hero')}</option>
