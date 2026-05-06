@@ -1,4 +1,4 @@
-import { BookOpen, Database, FileText, Image, Users } from 'lucide-react';
+import { BookOpen, ClipboardList, Database, FileText, Image, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { isAdmin } from '../auth';
@@ -18,11 +18,12 @@ export function DashboardPage() {
 
   useEffect(() => {
     async function load() {
-      const overview: { models?: number; entries: number; pages: number; media: number; users?: number } =
-        await api.statsOverview().catch(() => ({ entries: 0, pages: 0, media: 0 }));
+      const overview: { models?: number; entries: number; pages: number; media: number; forms?: number; users?: number } =
+        await api.statsOverview().catch(() => ({ entries: 0, pages: 0, media: 0, forms: 0 }));
       const baseStats: Stat[] = [
         { label: t('dashboard.statEntries'), value: overview.entries, icon: BookOpen },
         { label: t('dashboard.statPages'), value: overview.pages, icon: FileText },
+        { label: t('dashboard.statForms'), value: overview.forms ?? 0, icon: ClipboardList },
         { label: t('dashboard.statMedia'), value: overview.media, icon: Image },
       ];
 
@@ -48,7 +49,7 @@ export function DashboardPage() {
         <p className="text-sm text-stone-500">{t('dashboard.subtitle')}</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
         {stats.map(({ label, value, icon: Icon }) => (
           <div key={label} className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
@@ -57,7 +58,7 @@ export function DashboardPage() {
                 <Icon size={18} />
               </div>
             </div>
-            <div className="text-3xl font-semibold tracking-tight text-stone-950">{value}</div>
+            <div className="text-2xl font-semibold tracking-tight text-stone-950 sm:text-3xl">{value}</div>
           </div>
         ))}
       </div>

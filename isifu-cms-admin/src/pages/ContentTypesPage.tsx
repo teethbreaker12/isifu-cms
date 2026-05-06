@@ -71,17 +71,17 @@ export function ContentTypesPage() {
         }
       >
         <form onSubmit={submit} className="grid gap-4">
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 lg:grid-cols-2">
             <input className="rounded-md border border-stone-300 px-3 py-2" placeholder={t('models.namePlaceholder')} value={name} onChange={(event) => setName(event.target.value)} />
             <input className="rounded-md border border-stone-300 px-3 py-2 disabled:bg-stone-100" disabled={Boolean(editingKey)} placeholder={t('models.keyPlaceholder')} value={key} onChange={(event) => setKey(event.target.value)} />
           </div>
           {fields.map((field, index) => (
             <div key={index} className="grid gap-3 rounded-md border border-stone-200 p-3">
-              <div className="grid gap-2 md:grid-cols-[1fr_1fr_160px_110px_44px]">
+              <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_160px_110px_44px]">
                 <input className="rounded-md border border-stone-300 px-3 py-2" placeholder={t('models.fieldLabelPlaceholder')} value={field.label} onChange={(event) => setFields(fields.map((item, i) => (i === index ? { ...item, label: event.target.value } : item)))} />
                 <input className="rounded-md border border-stone-300 px-3 py-2" placeholder={t('models.fieldKeyPlaceholder')} value={field.key} onChange={(event) => setFields(fields.map((item, i) => (i === index ? { ...item, key: event.target.value } : item)))} />
                 <select className="rounded-md border border-stone-300 px-3 py-2" value={field.type} onChange={(event) => setFields(fields.map((item, i) => (i === index ? { ...item, type: event.target.value as FieldType, settings: event.target.value === 'image' ? item.settings : undefined } : item)))}>
-                  {(['text', 'textarea', 'richtext', 'image', 'lucideIcon', 'boolean', 'repeater'] as FieldType[]).map((type) => <option key={type} value={type}>{t(`fields.${type}`)}</option>)}
+                  {(['text', 'textarea', 'richtext', 'image', 'lucideIcon', 'boolean', 'date', 'repeater'] as FieldType[]).map((type) => <option key={type} value={type}>{t(`fields.${type}`)}</option>)}
                 </select>
                 <label className="flex items-center gap-2 text-sm text-stone-600">
                   <input type="checkbox" checked={field.required} onChange={(event) => setFields(fields.map((item, i) => (i === index ? { ...item, required: event.target.checked } : item)))} />
@@ -97,7 +97,7 @@ export function ContentTypesPage() {
                 </button>
               </div>
               {field.type === 'image' && (
-                <div className="grid gap-2 rounded-md bg-stone-50 p-3 md:grid-cols-[180px_160px]">
+                <div className="grid gap-2 rounded-md bg-stone-50 p-3 lg:grid-cols-[180px_160px]">
                   <label className="flex items-center gap-2 text-sm text-stone-600">
                     <input
                       type="checkbox"
@@ -119,7 +119,7 @@ export function ContentTypesPage() {
             </div>
           ))}
           {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button type="button" className="inline-flex items-center gap-2 rounded-md border border-stone-300 px-3 py-2 text-sm" onClick={() => setFields([...fields, { ...emptyField }])}>
               <Plus size={16} />
               {t('models.addField')}
@@ -136,7 +136,7 @@ export function ContentTypesPage() {
                 <div className="font-semibold text-stone-950">{item.name}</div>
                 <div className="text-sm text-stone-500">/{item.key} - {item.fields.length} fields</div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button className="inline-flex items-center gap-2 rounded-md border border-stone-300 px-3 py-2 text-sm" onClick={() => edit(item)}>
                   <Pencil size={16} />
                   {t('common.edit')}

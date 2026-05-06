@@ -1,5 +1,5 @@
 export type Role = 'ADMIN' | 'EDITOR';
-export type FieldType = 'text' | 'textarea' | 'richtext' | 'image' | 'lucideIcon' | 'boolean' | 'repeater';
+export type FieldType = 'text' | 'textarea' | 'richtext' | 'image' | 'lucideIcon' | 'boolean' | 'date' | 'repeater';
 
 export type User = {
   id: number;
@@ -61,5 +61,42 @@ export type MediaAsset = {
   size: number;
   url: string;
   storage: string;
+  createdAt: string;
+};
+
+export type FormFieldType = 'text' | 'email' | 'phone' | 'date' | 'textarea' | 'select' | 'checkbox' | 'hidden';
+
+export type FormField = {
+  id?: number;
+  label: string;
+  key: string;
+  type: FormFieldType;
+  required?: boolean;
+  settings?: Record<string, unknown>;
+  order?: number;
+};
+
+export type ContactForm = {
+  id: number;
+  name: string;
+  key: string;
+  description?: string;
+  recipientEmail: string;
+  notificationSubject?: string;
+  responderEnabled?: boolean;
+  responderEmailField?: string;
+  responderSubject?: string;
+  responderMessage?: string;
+  successMessage?: string;
+  fields: FormField[];
+};
+
+export type FormSubmission = {
+  id: number;
+  formId: number;
+  data: Record<string, unknown>;
+  respondentEmail?: string;
+  notificationSent: boolean;
+  responseSent: boolean;
   createdAt: string;
 };

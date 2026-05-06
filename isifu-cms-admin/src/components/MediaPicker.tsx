@@ -52,7 +52,7 @@ export function MediaPicker({
       )}
       <button
         type="button"
-        className="inline-flex w-fit items-center gap-2 rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 sm:w-fit"
         onClick={() => setIsOpen(true)}
       >
         <ImageIcon size={16} />
@@ -63,19 +63,19 @@ export function MediaPicker({
           className="min-h-20 rounded-md border border-stone-300 px-3 py-2 font-normal focus-ring"
           value={values.join('\n')}
           onChange={(event) => onChange(event.target.value.split('\n').map((item) => item.trim()).filter(Boolean).slice(0, limit))}
-          placeholder="/api/uploads/image.jpg"
+          placeholder={t('media.urlsPlaceholder')}
         />
       ) : (
         <input
           className="rounded-md border border-stone-300 px-3 py-2 font-normal focus-ring"
           value={String(value ?? '')}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="/api/uploads/image.jpg"
+          placeholder={t('media.urlPlaceholder')}
         />
       )}
       {isOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setIsOpen(false)}>
-          <div className="max-h-[80vh] w-full max-w-4xl overflow-auto rounded-lg border border-stone-200 bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+          <div className="max-h-[80vh] w-full max-w-4xl overflow-auto rounded-lg border border-stone-200 bg-white p-4 shadow-xl sm:p-5" onClick={(event) => event.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-base font-semibold text-stone-950">{t('nav.media')}</h3>
               <button type="button" className="rounded-md border border-stone-300 px-3 py-1 text-sm" onClick={() => setIsOpen(false)}>
@@ -85,7 +85,7 @@ export function MediaPicker({
             {assets.length === 0 ? (
               <p className="text-sm text-stone-500">{t('media.empty')}</p>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {assets.map((asset) => (
                   <button
                     key={asset.id}

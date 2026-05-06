@@ -9,6 +9,7 @@ import { ContentEntriesModule } from './content-entries/content-entries.module';
 import { PagesModule } from './pages/pages.module';
 import { MediaModule } from './media/media.module';
 import { StatsModule } from './stats/stats.module';
+import { FormsModule } from './forms/forms.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { StatsModule } from './stats/stats.module';
     ContentEntriesModule,
     PagesModule,
     MediaModule,
+    FormsModule,
     StatsModule,
   ],
 })

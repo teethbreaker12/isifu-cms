@@ -25,7 +25,7 @@ function SortableBlock({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: block.id, disabled: !canManageStructure });
   const setProp = (key: string, value: unknown) => onChange({ ...block, props: { ...block.props, [key]: value } });
-  const fieldBlockTypes = ['text', 'textarea', 'richtext', 'image', 'lucideIcon', 'boolean', 'repeater'];
+  const fieldBlockTypes = ['text', 'textarea', 'richtext', 'image', 'lucideIcon', 'boolean', 'date', 'repeater'];
   const blockLabel = {
     text: t('fields.text'),
     textarea: t('fields.textarea'),
@@ -33,6 +33,7 @@ function SortableBlock({
     image: t('fields.image'),
     lucideIcon: t('fields.lucideIcon'),
     boolean: t('fields.boolean'),
+    date: t('fields.date'),
     repeater: t('fields.repeater'),
     hero: t('pageBuilder.hero'),
     cta: t('pageBuilder.cta'),
@@ -41,7 +42,7 @@ function SortableBlock({
 
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className="rounded-md border border-stone-200 bg-white p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         {canManageStructure && (
           <button className="rounded p-1 text-stone-500 hover:bg-stone-100" {...attributes} {...listeners} aria-label="Drag block">
             <GripVertical size={18} />
@@ -49,7 +50,7 @@ function SortableBlock({
         )}
         {canManageStructure ? (
           <select
-            className="mr-auto rounded-md border border-stone-300 px-2 py-1 text-sm"
+            className="min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-sm"
             value={block.type}
             onChange={(event) => onChange({ ...block, type: event.target.value as PageBlock['type'] })}
           >
@@ -59,6 +60,7 @@ function SortableBlock({
             <option value="image">{t('pageBuilder.image')}</option>
             <option value="lucideIcon">{t('fields.lucideIcon')}</option>
             <option value="boolean">{t('fields.boolean')}</option>
+            <option value="date">{t('fields.date')}</option>
             <option value="repeater">{t('fields.repeater')}</option>
             <option value="hero">{t('pageBuilder.hero')}</option>
             <option value="cta">{t('pageBuilder.cta')}</option>
@@ -74,7 +76,7 @@ function SortableBlock({
         )}
       </div>
       {block.type === 'entry' ? (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 lg:grid-cols-2">
           <input className="rounded-md border border-stone-300 px-3 py-2 text-sm" placeholder={t('pageBuilder.blockTitle')} value={String(block.props.title ?? '')} onChange={(event) => setProp('title', event.target.value)} />
           <select
             className="rounded-md border border-stone-300 px-3 py-2 text-sm"
@@ -105,7 +107,7 @@ function SortableBlock({
         <div className="grid gap-3">
           {canManageStructure && <input className="rounded-md border border-stone-300 px-3 py-2 text-sm" placeholder={t('pageBuilder.blockTitle')} value={String(block.props.label ?? '')} onChange={(event) => setProp('label', event.target.value)} />}
           {canManageStructure && block.type === 'image' && (
-            <div className="grid gap-2 rounded-md bg-stone-50 p-3 md:grid-cols-[180px_160px]">
+            <div className="grid gap-2 rounded-md bg-stone-50 p-3 lg:grid-cols-[180px_160px]">
               <label className="flex items-center gap-2 text-sm text-stone-600">
                 <input type="checkbox" checked={Boolean(block.props.multiple)} onChange={(event) => setProp('multiple', event.target.checked)} />
                 {t('models.allowMultipleImages')}
@@ -190,7 +192,7 @@ export function PageBuilder({ blocks, onChange, canManageStructure = true }: { b
         </SortableContext>
       </DndContext>
       {canManageStructure && (
-        <button className="inline-flex w-fit items-center gap-2 rounded-md bg-stone-900 px-3 py-2 text-sm font-medium text-white" onClick={addBlock}>
+        <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-stone-900 px-3 py-2 text-sm font-medium text-white sm:w-fit" onClick={addBlock}>
           <Plus size={16} />
           {t('pageBuilder.addBlock')}
         </button>

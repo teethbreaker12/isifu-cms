@@ -73,7 +73,7 @@ export function SettingsPage() {
           <form className="grid gap-4" onSubmit={changePassword}>
             <input className="rounded-md border border-stone-300 px-3 py-2" type="password" required placeholder={t('settings.currentPassword')} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
             <input className="rounded-md border border-stone-300 px-3 py-2" type="password" required minLength={8} placeholder={t('settings.newPassword')} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
-            <button className="w-fit rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white">{t('settings.changePassword')}</button>
+            <button className="w-full rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white sm:w-fit">{t('settings.changePassword')}</button>
           </form>
         </Panel>
 
@@ -100,9 +100,9 @@ export function SettingsPage() {
               <form className="grid gap-3" onSubmit={verifyMy2fa}>
                 <p className="text-sm leading-6 text-stone-600">{t('users.scanQr')}</p>
                 <img src={setup.qrCode} alt="2FA QR code" className="h-44 w-44 rounded-md border border-stone-200 bg-white p-2" />
-                <div className="rounded-md bg-stone-100 px-3 py-2 font-mono text-xs text-stone-700">{setup.secret}</div>
-                <div className="flex gap-2">
-                  <input className="w-40 rounded-md border border-stone-300 px-3 py-2" placeholder="123456" inputMode="numeric" autoComplete="one-time-code" value={totpCode} onChange={(event) => setTotpCode(event.target.value)} />
+                <div className="break-all rounded-md bg-stone-100 px-3 py-2 font-mono text-xs text-stone-700">{setup.secret}</div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input className="w-full rounded-md border border-stone-300 px-3 py-2 sm:w-40" placeholder={t('users.twoFactorCodePlaceholder')} inputMode="numeric" autoComplete="one-time-code" value={totpCode} onChange={(event) => setTotpCode(event.target.value)} />
                   <button className="rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white">{t('users.verify2fa')}</button>
                 </div>
               </form>

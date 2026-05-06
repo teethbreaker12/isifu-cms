@@ -7,14 +7,15 @@ export class StatsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async overview(role: Role) {
-    const [entries, pages, media] = await Promise.all([
+    const [entries, pages, media, forms] = await Promise.all([
       this.prisma.contentEntry.count(),
       this.prisma.page.count(),
       this.prisma.mediaAsset.count(),
+      this.prisma.form.count(),
     ]);
 
     if (role === Role.EDITOR) {
-      return { entries, pages, media };
+      return { entries, pages, media, forms };
     }
 
     const [models, users] = await Promise.all([
@@ -22,6 +23,6 @@ export class StatsService {
       this.prisma.user.count(),
     ]);
 
-    return { models, entries, pages, media, users };
+    return { models, entries, pages, media, forms, users };
   }
 }

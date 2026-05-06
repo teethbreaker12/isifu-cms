@@ -4,6 +4,7 @@ import { RequireAuth } from './components/RequireAuth';
 import { ContentTypesPage } from './pages/ContentTypesPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EntriesPage } from './pages/EntriesPage';
+import { FormsPage } from './pages/FormsPage';
 import { LoginPage } from './pages/LoginPage';
 import { MediaPage } from './pages/MediaPage';
 import { PagesPage } from './pages/PagesPage';
@@ -19,6 +20,7 @@ export default function App() {
           <Route index element={<DashboardPage />} />
           <Route path="content-types" element={<ContentTypesPage />} />
           <Route path="entries" element={<EntriesPage />} />
+          <Route path="forms" element={<FormsPage />} />
           <Route path="pages" element={<PagesPage />} />
           <Route path="media" element={<MediaPage />} />
           <Route path="users" element={<UsersPage />} />

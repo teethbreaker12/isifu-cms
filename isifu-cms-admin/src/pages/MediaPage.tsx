@@ -33,23 +33,23 @@ export function MediaPage() {
     <div className="grid gap-5">
       <h1 className="text-2xl font-semibold tracking-tight text-stone-950">{t('nav.media')}</h1>
       <Panel title={t('media.upload')}>
-        <label className="flex w-fit cursor-pointer items-center gap-2 rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white">
+        <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white sm:w-fit">
           <Upload size={16} />
           {t('media.upload')}
           <input type="file" className="hidden" onChange={(event) => upload(event.target.files?.[0])} />
         </label>
-        {url && <p className="mt-4 rounded-md bg-stone-100 px-3 py-2 text-sm text-stone-700">{url}</p>}
+        {url && <p className="mt-4 break-all rounded-md bg-stone-100 px-3 py-2 text-sm text-stone-700">{url}</p>}
       </Panel>
       <Panel title={t('media.gallery')}>
         {assets.length === 0 ? (
           <p className="text-sm text-stone-500">{t('media.empty')}</p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {assets.map((asset) => {
               const isImage = asset.mimeType.startsWith('image/');
               return (
-                <div key={asset.id} className="group flex min-h-full flex-col overflow-hidden rounded-md border border-stone-200 bg-white transition hover:border-blue-500 hover:shadow-sm">
-                  <button type="button" className="text-left" onClick={() => setPreview(asset)}>
+                <div key={asset.id} className="group flex min-h-full min-w-0 flex-col overflow-hidden rounded-md border border-stone-200 bg-white transition hover:border-blue-500 hover:shadow-sm">
+                  <button type="button" className="min-w-0 text-left" onClick={() => setPreview(asset)}>
                   <div className="grid aspect-video place-items-center bg-stone-100">
                     {isImage ? (
                       <img src={mediaUrl(asset.url)} alt={asset.originalName} className="h-full w-full object-cover" />
@@ -79,7 +79,7 @@ export function MediaPage() {
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={() => setPreview(null)}>
           <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-lg border border-stone-200 bg-white shadow-xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
-              <div className="min-w-0">
+              <div className="min-w-0 pr-3">
                 <div className="truncate text-sm font-semibold text-stone-950">{preview.originalName}</div>
                 <div className="text-xs text-stone-500">{preview.mimeType} - {Math.round(preview.size / 1024)} KB</div>
               </div>

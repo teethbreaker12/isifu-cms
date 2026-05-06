@@ -1,4 +1,4 @@
-import { BookOpen, Database, FileText, Image, LayoutDashboard, LogOut, Menu, Settings, Users, X } from 'lucide-react';
+import { BookOpen, ClipboardList, Database, FileText, Image, LayoutDashboard, LogOut, Menu, Settings, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { clearTokens } from '../api/client';
@@ -14,6 +14,7 @@ export function Layout() {
   const links = [
     { to: '/', label: t('nav.dashboard'), icon: LayoutDashboard, adminOnly: false },
     { to: '/entries', label: t('nav.entries'), icon: BookOpen, adminOnly: false },
+    { to: '/forms', label: t('nav.forms'), icon: ClipboardList, adminOnly: false },
     { to: '/content-types', label: t('nav.models'), icon: Database, adminOnly: true },
     { to: '/pages', label: t('nav.pages'), icon: FileText, adminOnly: false },
     { to: '/media', label: t('nav.media'), icon: Image, adminOnly: false },
@@ -135,8 +136,8 @@ export function Layout() {
         </div>
       )}
 
-      <main className="md:pl-64">
-        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 md:py-6 lg:px-8">
+      <main className="min-w-0 md:pl-64">
+        <div className="mx-auto min-w-0 max-w-7xl px-3 py-4 sm:px-5 md:py-6 lg:px-6 xl:px-8">
           <Outlet />
         </div>
       </main>

@@ -62,7 +62,8 @@ export function LoginPage() {
                     <input
                         className="rounded-md border border-stone-300 px-3 py-2 font-normal focus-ring"
                         required
-                        placeholder={email}
+                        value={email}
+                        placeholder={t("login.emailPlaceholder")}
                         onChange={(event) => setEmail(event.target.value)}
                     />
                 </label>
@@ -86,6 +87,7 @@ export function LoginPage() {
                             autoFocus
                             inputMode="numeric"
                             autoComplete="one-time-code"
+                            placeholder={t("users.twoFactorCodePlaceholder")}
                             value={totpCode}
                             onChange={(event) =>
                                 setTotpCode(event.target.value)

@@ -26,6 +26,7 @@ Dostępne typy pól to:
 - `image` - wybór obrazu z mediów,
 - `lucideIcon` - nazwa ikony z pakietu `lucide-react`, np. `Camera`, `Mail`, `ShieldCheck`,
 - `boolean` - checkbox,
+- `date` - data wybierana z natywnego kalendarza,
 - `repeater` - dane tablicowe/JSON.
 
 Dane wpisów są zapisywane w dwóch formach: jako snapshot JSON przy wpisie oraz w dynamicznych tabelach MySQL tworzonych dla modeli treści. Dzięki temu panel może być elastyczny, a API może szybko zwracać gotowe dane.
@@ -37,6 +38,7 @@ Dane wpisów są zapisywane w dwóch formach: jako snapshot JSON przy wpisie ora
 ├── isifu-cms-admin/      # React + Vite admin panel
 ├── isifu-cms-backend/    # NestJS + Prisma API
 ├── update.sh             # prosty skrypt aktualizacji i builda
+├── API.md                # dokumentacja REST API
 └── README.md             # ten opis
 ```
 
@@ -365,6 +367,8 @@ Przed zgłoszeniem, że produkcja nie działa, sprawdź:
 
 ## Endpointy API
 
+Pełna dokumentacja korzystania z API znajduje się w [API.md](./API.md).
+
 Najważniejsze endpointy:
 
 - `POST /api/auth/login`
@@ -374,6 +378,8 @@ Najważniejsze endpointy:
 - `GET/POST/PUT/DELETE /api/content-types`
 - `GET/POST/PATCH/DELETE /api/content/:type`
 - `GET/POST/PUT/DELETE /api/pages`
+- `GET/POST/PUT/DELETE /api/forms`
+- `POST /api/forms/:key/submit`
 - `POST /api/media/upload`
 - `GET/POST/PATCH/DELETE /api/users`
 

@@ -1,4 +1,4 @@
-import type { ContentEntry, ContentType, MediaAsset, Page, User } from '../types/cms';
+import type { ContactForm, ContentEntry, ContentType, FormSubmission, MediaAsset, Page, User } from '../types/cms';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const API_ORIGIN = API_URL.replace(/\/api\/?$/, '');
@@ -74,7 +74,7 @@ export const api = {
     request<{ enabled: true }>('/auth/2fa/verify', { method: 'POST', body: JSON.stringify({ code }) }),
   disableMyTwoFactor: () => request<{ enabled: false }>('/auth/2fa/disable', { method: 'POST' }),
   me: () => request<User>('/auth/me', { method: 'POST' }),
-  statsOverview: () => request<{ models?: number; entries: number; pages: number; media: number; users?: number }>('/stats/overview'),
+  statsOverview: () => request<{ models?: number; entries: number; pages: number; media: number; forms?: number; users?: number }>('/stats/overview'),
   changePassword: (body: { currentPassword: string; newPassword: string }) =>
     request<{ ok: true }>('/auth/password', { method: 'POST', body: JSON.stringify(body) }),
   contentTypes: () => request<ContentType[]>('/content-types'),
@@ -108,4 +108,15 @@ export const api = {
     formData.append('file', file);
     return request<{ url: string }>('/media/upload', { method: 'POST', body: formData });
   },
+  forms: () => request<ContactForm[]>('/forms'),
+  createForm: (body: Partial<ContactForm>) => request<ContactForm>('/forms', { method: 'POST', body: JSON.stringify(body) }),
+  updateForm: (key: string, body: Partial<ContactForm>) =>
+    request<ContactForm>(`/forms/${key}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteForm: (key: string) => request<ContactForm>(`/forms/${key}`, { method: 'DELETE' }),
+  formSubmissions: (key: string) => request<FormSubmission[]>(`/forms/${key}/submissions`),
+  submitForm: (key: string, data: Record<string, unknown>) =>
+    request<{ ok: true; submissionId: number; notificationSent: boolean; responseSent: boolean; message: string }>(`/forms/${key}/submit`, {
+      method: 'POST',
+      body: JSON.stringify({ data }),
+    }),
 };

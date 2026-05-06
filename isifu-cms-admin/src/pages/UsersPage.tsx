@@ -93,11 +93,11 @@ export function UsersPage() {
       <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
         <Panel title={t('users.create')}>
           <form className="grid gap-4" onSubmit={createUser}>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3 lg:grid-cols-2">
               <input className="rounded-md border border-stone-300 px-3 py-2" placeholder={t('users.name')} value={name} onChange={(event) => setName(event.target.value)} />
               <input className="rounded-md border border-stone-300 px-3 py-2" placeholder={t('users.email')} required value={email} onChange={(event) => setEmail(event.target.value)} />
             </div>
-            <div className="grid gap-3 md:grid-cols-[1fr_160px]">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_160px]">
               <input className="rounded-md border border-stone-300 px-3 py-2" placeholder={t('users.password')} required type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
               <select className="rounded-md border border-stone-300 px-3 py-2" value={role} onChange={(event) => setRole(event.target.value as Role)}>
                 <option value="EDITOR">{t('users.editor')}</option>
@@ -105,7 +105,7 @@ export function UsersPage() {
               </select>
             </div>
             {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-            <button className="inline-flex w-fit items-center gap-2 rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white">
+            <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white sm:w-fit">
               <UserPlus size={16} />
               {t('common.create')}
             </button>
@@ -128,9 +128,9 @@ export function UsersPage() {
               <form className="grid gap-3" onSubmit={verifyMy2fa}>
                 <p className="text-sm leading-6 text-stone-600">{t('users.scanQr')}</p>
                 <img src={setup.qrCode} alt="2FA QR code" className="h-44 w-44 rounded-md border border-stone-200 bg-white p-2" />
-                <div className="rounded-md bg-stone-100 px-3 py-2 font-mono text-xs text-stone-700">{setup.secret}</div>
-                <div className="flex gap-2">
-                  <input className="w-40 rounded-md border border-stone-300 px-3 py-2" placeholder="123456" inputMode="numeric" autoComplete="one-time-code" value={totpCode} onChange={(event) => setTotpCode(event.target.value)} />
+                <div className="break-all rounded-md bg-stone-100 px-3 py-2 font-mono text-xs text-stone-700">{setup.secret}</div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input className="w-full rounded-md border border-stone-300 px-3 py-2 sm:w-40" placeholder={t('users.twoFactorCodePlaceholder')} inputMode="numeric" autoComplete="one-time-code" value={totpCode} onChange={(event) => setTotpCode(event.target.value)} />
                   <button className="rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white">{t('users.verify2fa')}</button>
                 </div>
               </form>
@@ -142,10 +142,10 @@ export function UsersPage() {
       <Panel title={t('users.team')}>
         <div className="grid gap-3">
           {users.map((user) => (
-            <div key={user.id} className="flex flex-col gap-3 rounded-md border border-stone-200 p-4 md:flex-row md:items-center md:justify-between">
-              <div>
+            <div key={user.id} className="flex flex-col gap-3 rounded-md border border-stone-200 p-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
                 <div className="font-semibold text-stone-950">{user.name || user.email}</div>
-                <div className="text-sm text-stone-500">{user.email}</div>
+                <div className="break-all text-sm text-stone-500">{user.email}</div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-md bg-stone-100 px-2 py-1 text-xs font-semibold text-stone-700">{user.role}</span>
@@ -159,7 +159,7 @@ export function UsersPage() {
                   </button>
                 )}
                 <input
-                  className="w-44 rounded-md border border-stone-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm sm:w-44"
                   type="password"
                   placeholder={t('users.newPassword')}
                   value={passwords[user.id] ?? ''}

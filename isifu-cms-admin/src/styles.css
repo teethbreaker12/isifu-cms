@@ -22,11 +22,36 @@ body {
   background: inherit;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 button,
 input,
 textarea,
 select {
   font: inherit;
+}
+
+input,
+textarea,
+select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+button {
+  max-width: 100%;
+}
+
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+img,
+iframe {
+  max-width: 100%;
 }
 
 :where(button, a, select, summary, [role="button"], label:has(input[type="checkbox"]), label:has(input[type="radio"]), label:has(input[type="file"]), input[type="checkbox"], input[type="radio"], input[type="file"]::file-selector-button) {

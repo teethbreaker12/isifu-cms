@@ -20,6 +20,7 @@ export function DynamicForm({ fields, value, onChange }: Props) {
           {field.type === 'textarea' ? (
             <textarea
               className="min-h-28 rounded-md border border-stone-300 px-3 py-2 font-normal leading-6 focus-ring"
+              placeholder={field.label}
               value={String(value[field.key] ?? '')}
               onChange={(event) => setField(field.key, event.target.value)}
             />
@@ -41,9 +42,18 @@ export function DynamicForm({ fields, value, onChange }: Props) {
               checked={Boolean(value[field.key])}
               onChange={(event) => setField(field.key, event.target.checked)}
             />
+          ) : field.type === 'date' ? (
+            <input
+              type="date"
+              className="rounded-md border border-stone-300 px-3 py-2 font-normal focus-ring"
+              aria-label={field.label}
+              value={String(value[field.key] ?? '')}
+              onChange={(event) => setField(field.key, event.target.value)}
+            />
           ) : field.type === 'repeater' ? (
             <textarea
               className="min-h-24 rounded-md border border-stone-300 px-3 py-2 font-mono text-xs font-normal focus-ring"
+              placeholder="[]"
               value={JSON.stringify(value[field.key] ?? [], null, 2)}
               onChange={(event) => {
                 try {
@@ -56,6 +66,7 @@ export function DynamicForm({ fields, value, onChange }: Props) {
           ) : (
             <input
               className="rounded-md border border-stone-300 px-3 py-2 font-normal focus-ring"
+              placeholder={field.label}
               value={String(value[field.key] ?? '')}
               onChange={(event) => setField(field.key, event.target.value)}
             />

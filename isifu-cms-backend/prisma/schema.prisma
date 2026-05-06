@@ -13,16 +13,16 @@ enum Role {
 }
 
 model User {
-  id                 Int      @id @default(autoincrement())
-  email              String   @unique
-  name               String?
-  passwordHash       String
-  role               Role     @default(EDITOR)
-  twoFactorEnabled   Boolean  @default(false)
-  twoFactorSecret    String?  @db.Text
-  refreshTokenHash   String?  @db.Text
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id               Int      @id @default(autoincrement())
+  email            String   @unique
+  name             String?
+  passwordHash     String
+  role             Role     @default(EDITOR)
+  twoFactorEnabled Boolean  @default(false)
+  twoFactorSecret  String?  @db.Text
+  refreshTokenHash String?  @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model ContentType {
@@ -67,27 +67,72 @@ model ContentEntry {
 }
 
 model Page {
-  id            Int          @id @default(autoincrement())
-  slug          String       @unique
-  title         String
-  seoTitle      String?
-  seoDescription String?     @db.Text
-  contentTypeId Int?
-  contentType   ContentType? @relation(fields: [contentTypeId], references: [id], onDelete: SetNull)
-  entryId       Int?
-  blocks        Json?
-  published     Boolean      @default(false)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id             Int          @id @default(autoincrement())
+  slug           String       @unique
+  title          String
+  seoTitle       String?
+  seoDescription String?      @db.Text
+  contentTypeId  Int?
+  contentType    ContentType? @relation(fields: [contentTypeId], references: [id], onDelete: SetNull)
+  entryId        Int?
+  blocks         Json?
+  published      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model MediaAsset {
-  id        Int      @id @default(autoincrement())
-  filename  String
+  id           Int      @id @default(autoincrement())
+  filename     String
   originalName String
-  mimeType  String
-  size      Int
-  url       String
-  storage   String   @default("local")
-  createdAt DateTime @default(now())
+  mimeType     String
+  size         Int
+  url          String
+  storage      String   @default("local")
+  createdAt    DateTime @default(now())
+}
+
+model Form {
+  id                  Int              @id @default(autoincrement())
+  name                String
+  key                 String           @unique
+  description         String?
+  recipientEmail      String
+  notificationSubject String?
+  responderEnabled    Boolean          @default(false)
+  responderEmailField String?
+  responderSubject    String?
+  responderMessage    String?          @db.Text
+  successMessage      String?
+  fields              FormField[]
+  submissions         FormSubmission[]
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+}
+
+model FormField {
+  id       Int     @id @default(autoincrement())
+  formId   Int
+  form     Form    @relation(fields: [formId], references: [id], onDelete: Cascade)
+  label    String
+  key      String
+  type     String
+  required Boolean @default(false)
+  settings Json?
+  order    Int     @default(0)
+
+  @@unique([formId, key])
+}
+
+model FormSubmission {
+  id               Int      @id @default(autoincrement())
+  formId           Int
+  form             Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  data             Json
+  respondentEmail  String?
+  notificationSent Boolean  @default(false)
+  responseSent     Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  @@index([formId, createdAt])
 }
