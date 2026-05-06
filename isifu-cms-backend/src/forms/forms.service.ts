@@ -1,11 +1,46 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@prisma/client';
-import * as nodemailer from 'nodemailer';
 import { PrismaService } from '../prisma/prisma.service';
 import { FormFieldDto, SubmitFormDto, UpsertFormDto } from './dto';
 
-type FormWithFields = Prisma.FormGetPayload<{ include: { fields: true } }>;
+type FormRow = {
+  id: number;
+  name: string;
+  key: string;
+  description: string | null;
+  recipientEmail: string;
+  notificationSubject: string | null;
+  responderEnabled: boolean | number;
+  responderEmailField: string | null;
+  responderSubject: string | null;
+  responderMessage: string | null;
+  successMessage: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+};
+
+type FormFieldRow = {
+  id: number;
+  formId: number;
+  label: string;
+  key: string;
+  type: string;
+  required: boolean | number;
+  settings: unknown;
+  order: number;
+};
+
+type FormSubmissionRow = {
+  id: number;
+  formId: number;
+  data: unknown;
+  respondentEmail: string | null;
+  notificationSent: boolean | number;
+  responseSent: boolean | number;
+  createdAt: Date | string;
+};
+
+type FormWithFields = ReturnType<FormsService['normalizeForm']>;
 
 @Injectable()
 export class FormsService {
@@ -14,39 +49,53 @@ export class FormsService {
     private readonly config: ConfigService,
   ) {}
 
-  findAll() {
-    return this.prisma.form.findMany({
-      include: { fields: { orderBy: { order: 'asc' } } },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll() {
+    const forms = await this.prisma.$queryRawUnsafe<FormRow[]>('SELECT * FROM `Form` ORDER BY `createdAt` DESC');
+    return Promise.all(forms.map((form) => this.withFields(form)));
   }
 
   async findByKey(key: string) {
-    const form = await this.prisma.form.findUnique({
-      where: { key },
-      include: { fields: { orderBy: { order: 'asc' } } },
-    });
+    const [form] = await this.prisma.$queryRawUnsafe<FormRow[]>('SELECT * FROM `Form` WHERE `key` = ? LIMIT 1', key);
     if (!form) throw new NotFoundException('Form not found');
-    return form;
+    return this.withFields(form);
   }
 
   async submissions(key: string) {
     const form = await this.findByKey(key);
-    return this.prisma.formSubmission.findMany({
-      where: { formId: form.id },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    });
+    const rows = await this.prisma.$queryRawUnsafe<FormSubmissionRow[]>(
+      'SELECT * FROM `FormSubmission` WHERE `formId` = ? ORDER BY `createdAt` DESC LIMIT 100',
+      form.id,
+    );
+    return rows.map((row) => ({
+      ...row,
+      data: this.parseJson(row.data),
+      notificationSent: Boolean(row.notificationSent),
+      responseSent: Boolean(row.responseSent),
+    }));
   }
 
   async create(dto: UpsertFormDto) {
     this.validateForm(dto);
-    return this.prisma.form.create({
-      data: {
-        ...this.formData(dto),
-        fields: { create: this.fieldCreateInput(dto.fields) },
-      },
-      include: { fields: { orderBy: { order: 'asc' } } },
+    return this.prisma.$transaction(async (tx) => {
+      const data = this.formData(dto);
+      await tx.$executeRawUnsafe(
+        'INSERT INTO `Form` (`name`, `key`, `description`, `recipientEmail`, `notificationSubject`, `responderEnabled`, `responderEmailField`, `responderSubject`, `responderMessage`, `successMessage`, `createdAt`, `updatedAt`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3))',
+        data.name,
+        data.key,
+        data.description,
+        data.recipientEmail,
+        data.notificationSubject,
+        data.responderEnabled,
+        data.responderEmailField,
+        data.responderSubject,
+        data.responderMessage,
+        data.successMessage,
+      );
+      const [{ id }] = await tx.$queryRawUnsafe<{ id: number }[]>('SELECT LAST_INSERT_ID() AS id');
+      await this.insertFields(tx, id, dto.fields);
+      const [form] = await tx.$queryRawUnsafe<FormRow[]>('SELECT * FROM `Form` WHERE `id` = ? LIMIT 1', id);
+      const fields = await tx.$queryRawUnsafe<FormFieldRow[]>('SELECT * FROM `FormField` WHERE `formId` = ? ORDER BY `order` ASC', id);
+      return this.normalizeForm(form, fields);
     });
   }
 
@@ -54,34 +103,40 @@ export class FormsService {
     this.validateForm(dto);
     const existing = await this.findByKey(key);
     return this.prisma.$transaction(async (tx) => {
-      await tx.formField.deleteMany({ where: { formId: existing.id } });
-      return tx.form.update({
-        where: { id: existing.id },
-        data: {
-          ...this.formData(dto),
-          fields: { create: this.fieldCreateInput(dto.fields) },
-        },
-        include: { fields: { orderBy: { order: 'asc' } } },
-      });
+      const data = this.formData(dto);
+      await tx.$executeRawUnsafe(
+        'UPDATE `Form` SET `name` = ?, `key` = ?, `description` = ?, `recipientEmail` = ?, `notificationSubject` = ?, `responderEnabled` = ?, `responderEmailField` = ?, `responderSubject` = ?, `responderMessage` = ?, `successMessage` = ?, `updatedAt` = NOW(3) WHERE `id` = ?',
+        data.name,
+        data.key,
+        data.description,
+        data.recipientEmail,
+        data.notificationSubject,
+        data.responderEnabled,
+        data.responderEmailField,
+        data.responderSubject,
+        data.responderMessage,
+        data.successMessage,
+        existing.id,
+      );
+      await tx.$executeRawUnsafe('DELETE FROM `FormField` WHERE `formId` = ?', existing.id);
+      await this.insertFields(tx, existing.id, dto.fields);
+      const [form] = await tx.$queryRawUnsafe<FormRow[]>('SELECT * FROM `Form` WHERE `id` = ? LIMIT 1', existing.id);
+      const fields = await tx.$queryRawUnsafe<FormFieldRow[]>('SELECT * FROM `FormField` WHERE `formId` = ? ORDER BY `order` ASC', existing.id);
+      return this.normalizeForm(form, fields);
     });
   }
 
   async remove(key: string) {
     const form = await this.findByKey(key);
-    return this.prisma.form.delete({ where: { id: form.id } });
+    await this.prisma.$executeRawUnsafe('DELETE FROM `Form` WHERE `id` = ?', form.id);
+    return form;
   }
 
   async submit(key: string, dto: SubmitFormDto) {
     const form = await this.findByKey(key);
     const data = this.normalizeSubmission(form.fields, dto.data);
     const respondentEmail = this.respondentEmail(form, data);
-    const submission = await this.prisma.formSubmission.create({
-      data: {
-        formId: form.id,
-        data: data as Prisma.InputJsonObject,
-        respondentEmail,
-      },
-    });
+    const submission = await this.createSubmission(form.id, data, respondentEmail);
 
     const notificationSent = await this.sendNotification(form, data, submission.id);
     let responseSent = false;
@@ -89,10 +144,12 @@ export class FormsService {
       responseSent = await this.sendResponse(form, data, respondentEmail);
     }
 
-    await this.prisma.formSubmission.update({
-      where: { id: submission.id },
-      data: { notificationSent, responseSent },
-    });
+    await this.prisma.$executeRawUnsafe(
+      'UPDATE `FormSubmission` SET `notificationSent` = ?, `responseSent` = ? WHERE `id` = ?',
+      notificationSent,
+      responseSent,
+      submission.id,
+    );
 
     if (!notificationSent) {
       throw new BadRequestException('Form submission was saved, but notification email could not be sent');
@@ -122,6 +179,26 @@ export class FormsService {
     };
   }
 
+  private async withFields(form: FormRow) {
+    const fields = await this.prisma.$queryRawUnsafe<FormFieldRow[]>(
+      'SELECT * FROM `FormField` WHERE `formId` = ? ORDER BY `order` ASC',
+      form.id,
+    );
+    return this.normalizeForm(form, fields);
+  }
+
+  private normalizeForm(form: FormRow, fields: FormFieldRow[]) {
+    return {
+      ...form,
+      responderEnabled: Boolean(form.responderEnabled),
+      fields: fields.map((field) => ({
+        ...field,
+        required: Boolean(field.required),
+        settings: this.parseJson(field.settings),
+      })),
+    };
+  }
+
   private validateForm(dto: UpsertFormDto) {
     this.assertUniqueFields(dto.fields);
     if (dto.responderEnabled && dto.responderEmailField) {
@@ -139,15 +216,46 @@ export class FormsService {
     }
   }
 
-  private fieldCreateInput(fields: FormFieldDto[]) {
-    return fields.map((field, index) => ({
-      label: field.label,
-      key: field.key,
-      type: field.type,
-      required: field.required ?? false,
-      settings: field.settings as Prisma.InputJsonObject | undefined,
-      order: field.order ?? index,
-    }));
+  private async insertFields(tx: Pick<PrismaService, '$executeRawUnsafe'>, formId: number, fields: FormFieldDto[]) {
+    for (const [index, field] of fields.entries()) {
+      await tx.$executeRawUnsafe(
+        'INSERT INTO `FormField` (`formId`, `label`, `key`, `type`, `required`, `settings`, `order`) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        formId,
+        field.label,
+        field.key,
+        field.type,
+        field.required ?? false,
+        field.settings ? JSON.stringify(field.settings) : null,
+        field.order ?? index,
+      );
+    }
+  }
+
+  private async createSubmission(formId: number, data: Record<string, unknown>, respondentEmail?: string) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(
+        'INSERT INTO `FormSubmission` (`formId`, `data`, `respondentEmail`, `createdAt`) VALUES (?, ?, ?, NOW(3))',
+        formId,
+        JSON.stringify(data),
+        respondentEmail ?? null,
+      );
+      const [submission] = await tx.$queryRawUnsafe<FormSubmissionRow[]>('SELECT * FROM `FormSubmission` WHERE `id` = LAST_INSERT_ID()');
+      return {
+        ...submission,
+        data: this.parseJson(submission.data),
+        notificationSent: Boolean(submission.notificationSent),
+        responseSent: Boolean(submission.responseSent),
+      };
+    });
+  }
+
+  private parseJson(value: unknown) {
+    if (typeof value !== 'string') return value;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
   }
 
   private normalizeSubmission(fields: FormWithFields['fields'], input: Record<string, unknown>) {
@@ -225,6 +333,8 @@ export class FormsService {
     const pass = this.config.get<string>('SMTP_PASS');
     const secure = this.config.get<string>('SMTP_SECURE', 'false') === 'true';
     const from = this.config.get<string>('SMTP_FROM') || user || 'cms@example.com';
+    const nodemailer = this.loadMailer();
+    if (!nodemailer) return false;
     const transporter = nodemailer.createTransport({
       host,
       port,
@@ -236,6 +346,15 @@ export class FormsService {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  private loadMailer(): { createTransport: (options: Record<string, unknown>) => { sendMail: (message: Record<string, unknown>) => Promise<unknown> } } | null {
+    try {
+      const load = new Function('moduleName', 'return require(moduleName)') as (moduleName: string) => unknown;
+      return load('nodemailer') as { createTransport: (options: Record<string, unknown>) => { sendMail: (message: Record<string, unknown>) => Promise<unknown> } };
+    } catch {
+      return null;
     }
   }
 
