@@ -62,7 +62,6 @@ export function LoginPage() {
                     <input
                         className="rounded-md border border-stone-300 px-3 py-2 font-normal focus-ring"
                         required
-                        value={email}
                         placeholder={t("login.emailPlaceholder")}
                         onChange={(event) => setEmail(event.target.value)}
                     />
