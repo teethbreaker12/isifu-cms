@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pencil, Trash2, X } from 'lucide-react';
+import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { api } from '../api/client';
 import { DynamicForm } from '../components/DynamicForm';
 import { Panel } from '../components/Panel';
@@ -12,10 +12,11 @@ export function EntriesPage() {
   const [entries, setEntries] = useState<ContentEntry[]>([]);
   const [data, setData] = useState<Record<string, unknown>>({});
   const [slug, setSlug] = useState('');
-  const [status, setStatus] = useState<'draft' | 'published'>('draft');
   const [editingEntry, setEditingEntry] = useState<ContentEntry | null>(null);
+  const [creatingEntry, setCreatingEntry] = useState(false);
   const [error, setError] = useState('');
   const current = types.find((type) => type.key === selected);
+  const isEditing = creatingEntry || Boolean(editingEntry);
 
   useEffect(() => {
     api.contentTypes().then((result) => {
@@ -31,14 +32,13 @@ export function EntriesPage() {
     }
   }, [selected]);
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
+  async function save(nextStatus: ContentEntry['status']) {
     setError('');
     try {
       if (editingEntry) {
-        await api.updateEntry(selected, editingEntry.id, { slug, status, data });
+        await api.updateEntry(selected, editingEntry.id, { slug, status: nextStatus, data });
       } else {
-        await api.createEntry(selected, { slug, status, data });
+        await api.createEntry(selected, { slug, status: nextStatus, data });
       }
       resetForm();
       setEntries(await api.entries(selected));
@@ -47,18 +47,31 @@ export function EntriesPage() {
     }
   }
 
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    void save('draft');
+  }
+
+  function startCreate() {
+    setData({});
+    setSlug('');
+    setEditingEntry(null);
+    setCreatingEntry(true);
+    setError('');
+  }
+
   function edit(entry: ContentEntry) {
     setEditingEntry(entry);
+    setCreatingEntry(false);
     setSlug(entry.slug ?? '');
-    setStatus(entry.status);
     setData(entry.data ?? {});
   }
 
   function resetForm() {
     setData({});
     setSlug('');
-    setStatus('draft');
     setEditingEntry(null);
+    setCreatingEntry(false);
     setError('');
   }
 
@@ -79,26 +92,36 @@ export function EntriesPage() {
         <Panel
           title={`${editingEntry ? t('entries.edit') : t('entries.new')}: ${current.name}`}
           action={
-            editingEntry ? (
+            isEditing ? (
               <button type="button" className="inline-flex items-center gap-2 rounded-md border border-stone-300 px-3 py-2 text-sm" onClick={resetForm}>
                 <X size={16} />
                 {t('common.cancel')}
               </button>
-            ) : null
+            ) : (
+              <button type="button" className="inline-flex items-center gap-2 rounded-md bg-stone-950 px-3 py-2 text-sm font-medium text-white" onClick={startCreate}>
+                <Plus size={16} />
+                {t('entries.new')}
+              </button>
+            )
           }
         >
-          <form className="grid gap-4" onSubmit={submit}>
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px]">
+          {isEditing ? (
+            <form className="grid gap-4" onSubmit={submit}>
               <input className="rounded-md border border-stone-300 px-3 py-2" placeholder={t('entries.slugPlaceholder')} value={slug} onChange={(event) => setSlug(event.target.value)} />
-              <select className="rounded-md border border-stone-300 px-3 py-2" value={status} onChange={(event) => setStatus(event.target.value as 'draft' | 'published')}>
-                <option value="draft">{t('common.draft')}</option>
-                <option value="published">{t('common.published')}</option>
-              </select>
-            </div>
-            <DynamicForm fields={current.fields} value={data} onChange={setData} />
-            {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-            <button className="w-full rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white sm:w-fit">{editingEntry ? t('common.update') : t('common.saveDraft')}</button>
-          </form>
+              <DynamicForm fields={current.fields} value={data} onChange={setData} />
+              {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="submit" className="w-full rounded-md border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-800 sm:w-fit">
+                  {t('common.saveDraft')}
+                </button>
+                <button type="button" className="w-full rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white sm:w-fit" onClick={() => void save('published')}>
+                  {t('common.publish')}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <p className="text-sm leading-6 text-stone-600">{t('entries.editorHint')}</p>
+          )}
         </Panel>
       )}
       {!current && <Panel title={t('entries.title')}><p className="text-sm text-stone-500">{t('entries.noModel')}</p></Panel>}
