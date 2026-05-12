@@ -6,7 +6,7 @@ import { t } from "../i18n";
 
 export function LoginPage() {
     const navigate = useNavigate();
-    const [email, setEmail] = useState("admin@example.com");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [totpCode, setTotpCode] = useState("");
     const [error, setError] = useState("");
@@ -60,20 +60,31 @@ export function LoginPage() {
                 <label className="mb-3 grid gap-1 text-sm font-medium text-stone-700">
                     {t("login.email")}
                     <input
+                        id="email"
+                        name="username"
                         className="rounded-md border border-stone-300 px-3 py-2 font-normal focus-ring"
                         required
+                        type="email"
+                        autoComplete="username"
+                        autoCapitalize="none"
+                        autoCorrect="off"
                         placeholder={t("login.emailPlaceholder")}
+                        value={email}
+                        readOnly={needsTwoFactor}
                         onChange={(event) => setEmail(event.target.value)}
                     />
                 </label>
                 <label className="mb-3 grid gap-1 text-sm font-medium text-stone-700">
                     {t("login.password")}
                     <input
+                        id="password"
+                        name="password"
                         className="rounded-md border border-stone-300 px-3 py-2 font-normal focus-ring"
                         required
                         type="password"
+                        autoComplete="current-password"
                         value={password}
-                        disabled={needsTwoFactor}
+                        readOnly={needsTwoFactor}
                         onChange={(event) => setPassword(event.target.value)}
                     />
                 </label>
@@ -81,11 +92,16 @@ export function LoginPage() {
                     <label className="mb-4 grid gap-1 text-sm font-medium text-stone-700">
                         {t("login.twoFactorCode")}
                         <input
+                            id="one-time-code"
+                            name="one-time-code"
                             className="rounded-md border border-stone-300 px-3 py-2 font-normal focus-ring"
                             required
                             autoFocus
+                            type="text"
                             inputMode="numeric"
                             autoComplete="one-time-code"
+                            pattern="[0-9\\s-]*"
+                            maxLength={12}
                             placeholder={t("users.twoFactorCodePlaceholder")}
                             value={totpCode}
                             onChange={(event) =>

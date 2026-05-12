@@ -1,6 +1,6 @@
 {
   "name": "isifu-cms-admin",
-  "version": "1.0.0",
+  "version": "1.10.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -20,11 +20,15 @@
     "tailwindcss": "^4.0.0"
   },
   "devDependencies": {
-    "@types/node": "^22.10.7",
+    "@types/node": "^22.19.19",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.3",
     "vite": "^6.0.7"
-  }
+  },
+  "description": "React + Vite admin panel for the NestJS CMS.",
+  "main": "index.js",
+  "author": "",
+  "license": "ISC"
 }

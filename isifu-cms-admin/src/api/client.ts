@@ -5,23 +5,39 @@ const API_ORIGIN = API_URL.replace(/\/api\/?$/, '');
 const ACCESS_KEY = 'cms_access_token';
 const REFRESH_KEY = 'cms_refresh_token';
 const USER_KEY = 'cms_user';
+const SESSION_KEYS = [ACCESS_KEY, REFRESH_KEY, USER_KEY] as const;
+
+function migrateLegacyLocalSession() {
+  for (const key of SESSION_KEYS) {
+    const value = localStorage.getItem(key);
+    if (value && !sessionStorage.getItem(key)) {
+      sessionStorage.setItem(key, value);
+    }
+    localStorage.removeItem(key);
+  }
+}
+
+migrateLegacyLocalSession();
 
 export function getAccessToken() {
-  return localStorage.getItem(ACCESS_KEY);
+  return sessionStorage.getItem(ACCESS_KEY);
 }
 
 export function setTokens(accessToken: string, refreshToken: string) {
-  localStorage.setItem(ACCESS_KEY, accessToken);
-  localStorage.setItem(REFRESH_KEY, refreshToken);
+  sessionStorage.setItem(ACCESS_KEY, accessToken);
+  sessionStorage.setItem(REFRESH_KEY, refreshToken);
+  localStorage.removeItem(ACCESS_KEY);
+  localStorage.removeItem(REFRESH_KEY);
 }
 
 export function setCurrentUser(user: User) {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+  localStorage.removeItem(USER_KEY);
   window.dispatchEvent(new Event('cms:user-updated'));
 }
 
 export function getCurrentUser(): User | null {
-  const raw = localStorage.getItem(USER_KEY);
+  const raw = sessionStorage.getItem(USER_KEY);
   if (raw) return JSON.parse(raw) as User;
   const token = getAccessToken();
   if (!token) return null;
@@ -34,9 +50,26 @@ export function getCurrentUser(): User | null {
 }
 
 export function clearTokens() {
-  localStorage.removeItem(ACCESS_KEY);
-  localStorage.removeItem(REFRESH_KEY);
-  localStorage.removeItem(USER_KEY);
+  for (const key of SESSION_KEYS) {
+    sessionStorage.removeItem(key);
+    localStorage.removeItem(key);
+  }
+  window.dispatchEvent(new Event('cms:user-updated'));
+}
+
+export function revokeCurrentSession(options: { keepalive?: boolean } = {}) {
+  const token = getAccessToken();
+  if (!token) return Promise.resolve();
+
+  return fetch(`${API_URL}/auth/logout`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: '{}',
+    keepalive: options.keepalive,
+  }).catch(() => undefined);
 }
 
 export function mediaUrl(url: string) {
@@ -58,6 +91,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: response.statusText }));
+    if (response.status === 401 && token && error.message === 'Unauthorized') {
+      clearTokens();
+      if (window.location.pathname !== '/login') {
+        window.location.assign('/login');
+      }
+    }
     throw new Error(error.message || 'Request failed');
   }
   return response.json();
@@ -74,6 +113,7 @@ export const api = {
     request<{ enabled: true }>('/auth/2fa/verify', { method: 'POST', body: JSON.stringify({ code }) }),
   disableMyTwoFactor: () => request<{ enabled: false }>('/auth/2fa/disable', { method: 'POST' }),
   me: () => request<User>('/auth/me', { method: 'POST' }),
+  logout: () => request<{ ok: true }>('/auth/logout', { method: 'POST' }),
   statsOverview: () => request<{ models?: number; entries: number; pages: number; media: number; forms?: number; users?: number }>('/stats/overview'),
   changePassword: (body: { currentPassword: string; newPassword: string }) =>
     request<{ ok: true }>('/auth/password', { method: 'POST', body: JSON.stringify(body) }),

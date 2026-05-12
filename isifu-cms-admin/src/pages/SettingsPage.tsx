@@ -102,7 +102,7 @@ export function SettingsPage() {
                 <img src={setup.qrCode} alt="2FA QR code" className="h-44 w-44 rounded-md border border-stone-200 bg-white p-2" />
                 <div className="break-all rounded-md bg-stone-100 px-3 py-2 font-mono text-xs text-stone-700">{setup.secret}</div>
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <input className="w-full rounded-md border border-stone-300 px-3 py-2 sm:w-40" placeholder={t('users.twoFactorCodePlaceholder')} inputMode="numeric" autoComplete="one-time-code" value={totpCode} onChange={(event) => setTotpCode(event.target.value)} />
+                  <input className="w-full rounded-md border border-stone-300 px-3 py-2 sm:w-40" name="one-time-code" type="text" placeholder={t('users.twoFactorCodePlaceholder')} inputMode="numeric" autoComplete="one-time-code" pattern="[0-9\\s-]*" maxLength={12} value={totpCode} onChange={(event) => setTotpCode(event.target.value)} />
                   <button className="rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white">{t('users.verify2fa')}</button>
                 </div>
               </form>
