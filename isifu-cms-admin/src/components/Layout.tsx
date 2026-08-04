@@ -8,11 +8,12 @@ import {
     LogOut,
     Menu,
     Settings,
+    ShieldCheck,
     Users,
     X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router";
 import { clearTokens, revokeCurrentSession } from "../api/client";
 import { isAdmin } from "../auth";
 import { getLanguage, setLanguage, t } from "../i18n";
@@ -65,7 +66,6 @@ export function Layout() {
             adminOnly: false,
         },
     ].filter((link) => !link.adminOnly || isAdmin());
-
     useEffect(() => {
         document.body.style.overflow = mobileMenuOpen ? "hidden" : "";
         return () => {
@@ -82,19 +82,22 @@ export function Layout() {
 
     const sidebarContent = (
         <>
-            <div className="px-5 py-5 pr-16 md:px-6 md:pr-6">
-                <div className="text-lg font-semibold tracking-tight text-stone-950">
-                    {t("app.name")}
-                </div>
-                <div className="text-xs mt-0 mb-2 text-stone-500">
-                    v{config.version}
-                </div>
-
-                <div className="text-sm text-stone-500">
-                    {t("app.subtitle")}
+            <div className="px-4 py-4 pr-16 md:px-4 md:pr-4">
+                <div className="flex items-center gap-3">
+                    <div className="grid h-10 w-10 place-items-center rounded-lg bg-stone-950 text-sm font-semibold text-white">
+                        IS
+                    </div>
+                    <div className="min-w-0">
+                        <div className="truncate text-base font-semibold tracking-tight text-stone-950">
+                            {t("app.name")}
+                        </div>
+                        <div className="text-xs text-stone-500">
+                            v{config.version}
+                        </div>
+                    </div>
                 </div>
             </div>
-            <nav className="grid gap-1 px-3">
+            <nav className="grid gap-1 px-3" aria-label="Workspace navigation">
                 {links.map(({ to, label, icon: Icon }) => (
                     <NavLink
                         key={to}
@@ -102,46 +105,48 @@ export function Layout() {
                         end={to === "/"}
                         onClick={() => setMobileMenuOpen(false)}
                         className={({ isActive }) =>
-                            `flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm transition ${
+                            `group relative flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm transition ${
                                 isActive
-                                    ? "bg-blue-50 text-blue-700"
+                                    ? "accent-soft"
                                     : "text-stone-600 hover:bg-stone-100 hover:text-stone-950"
                             }`
                         }
                     >
-                        <Icon size={19} />
+                        <Icon size={18} />
                         <span className="min-w-0 truncate">{label}</span>
                     </NavLink>
                 ))}
             </nav>
-            <div className="mt-auto grid gap-3 px-3 pb-4 pt-6">
+            <div className="mt-auto grid gap-3 border-t border-stone-200 px-3 pb-4 pt-4">
                 <UserBadge compact />
-                <select
-                    className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-700"
-                    value={getLanguage()}
-                    onChange={(event) => setLanguage(event.target.value)}
-                    aria-label="Language"
-                >
-                    <option value="en">English</option>
-                    <option value="pl">Polski</option>
-                    <option value="es">Español</option>
-                </select>
-                <select
-                    className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-700"
-                    value={theme}
-                    onChange={(event) =>
-                        setTheme(
-                            event.target.value as "light" | "dark" | "system",
-                        )
-                    }
-                    aria-label="Theme"
-                >
-                    <option value="system">{t("theme.system")}</option>
-                    <option value="light">{t("theme.light")}</option>
-                    <option value="dark">{t("theme.dark")}</option>
-                </select>
+                <div className="grid grid-cols-2 gap-2">
+                    <select
+                        className="w-full rounded-md border border-stone-300 bg-white px-2 py-2 text-xs font-medium text-stone-700"
+                        value={getLanguage()}
+                        onChange={(event) => setLanguage(event.target.value)}
+                        aria-label="Language"
+                    >
+                        <option value="en">English</option>
+                        <option value="pl">Polski</option>
+                        <option value="es">Español</option>
+                    </select>
+                    <select
+                        className="w-full rounded-md border border-stone-300 bg-white px-2 py-2 text-xs font-medium text-stone-700"
+                        value={theme}
+                        onChange={(event) =>
+                            setTheme(
+                                event.target.value as "light" | "dark" | "system",
+                            )
+                        }
+                        aria-label="Theme"
+                    >
+                        <option value="system">{t("theme.system")}</option>
+                        <option value="light">{t("theme.light")}</option>
+                        <option value="dark">{t("theme.dark")}</option>
+                    </select>
+                </div>
                 <button
-                    className="flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm text-stone-600 hover:bg-stone-100"
+                    className="flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
                     onClick={signOut}
                 >
                     <LogOut size={18} />
@@ -152,21 +157,18 @@ export function Layout() {
     );
 
     return (
-        <div className="min-h-screen bg-[#f7f7f4]">
-            <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-stone-200 bg-white md:flex">
+        <div className="app-shell min-h-screen">
+            <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-stone-200 bg-white/92 backdrop-blur md:flex">
                 {sidebarContent}
             </aside>
 
-            <div className="sticky top-0 z-20 flex min-h-16 items-center justify-between border-b border-stone-200 bg-white px-4 md:hidden">
-                <div className="min-w-0">
+            <div className="sticky top-0 z-20 flex min-h-16 items-center justify-between border-b border-stone-200 bg-white/92 px-4 backdrop-blur md:hidden">
+                <div className="flex min-w-0 items-center gap-3">
+                    <div className="grid h-9 w-9 place-items-center rounded-lg bg-stone-950 text-xs font-semibold text-white">
+                        IS
+                    </div>
                     <div className="truncate text-base font-semibold tracking-tight text-stone-950">
                         {t("app.name")}
-                    </div>
-                    <div className="truncate text-xs text-stone-500">
-                        v{config.version}
-                    </div>
-                    <div className="truncate text-xs text-stone-500">
-                        {t("app.subtitle")}
                     </div>
                 </div>
                 <button
@@ -202,7 +204,26 @@ export function Layout() {
                 </div>
             )}
 
-            <main className="min-w-0 md:pl-64">
+            <main className="min-w-0 md:pl-72">
+                <div className="sticky top-0 z-10 hidden border-b border-stone-200 bg-white/76 backdrop-blur md:block">
+                    <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-end gap-4 px-5 lg:px-6 xl:px-8">
+                        <div className="flex items-center gap-3">
+                            <div className="accent-soft hidden items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold lg:flex">
+                                <ShieldCheck size={14} />
+                                {t("dashboard.apiOnline")}
+                            </div>
+                            <button
+                                type="button"
+                                className="grid h-8 w-8 place-items-center rounded-md border border-stone-300 bg-white text-stone-700"
+                                onClick={() => navigate("/settings")}
+                                aria-label={t("dashboard.commandSettings")}
+                                title={t("dashboard.commandSettings")}
+                            >
+                                <Settings size={15} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <div className="mx-auto min-w-0 max-w-7xl px-3 py-4 sm:px-5 md:py-6 lg:px-6 xl:px-8">
                     <Outlet />
                 </div>

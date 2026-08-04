@@ -99,7 +99,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     }
     throw new Error(error.message || 'Request failed');
   }
-  return response.json();
+  const data = await response.json();
+  const method = (options.method ?? 'GET').toUpperCase();
+  if (method !== 'GET') {
+    window.dispatchEvent(new CustomEvent('cms:stats-changed', { detail: { path, method } }));
+  }
+  return data;
 }
 
 export const api = {

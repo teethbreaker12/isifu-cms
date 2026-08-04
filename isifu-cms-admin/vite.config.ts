@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const slug = env.VITE_ADMIN_SLUG || 'admin-xyz';
+  const slug = env.VITE_ADMIN_SLUG || 'admin';
 
   return {
     base: `/${slug}/`,

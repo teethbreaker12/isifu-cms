@@ -643,7 +643,7 @@ Odpowiedź:
 ```json
 {
   "ok": true,
-  "service": "OlMedia CMS API"
+  "service": "ISIFU CMS API"
 }
 ```
 

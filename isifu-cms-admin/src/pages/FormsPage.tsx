@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Mail, Pencil, Plus, Trash2, X } from "lucide-react";
 import { api } from "../api/client";
 import { isAdmin } from "../auth";
+import { Modal } from "../components/Modal";
 import { Panel } from "../components/Panel";
+import { useToast } from "../components/Toast";
 import { t } from "../i18n";
 import type {
     ContactForm,
@@ -29,6 +31,7 @@ const fieldTypes: FormFieldType[] = [
 ];
 
 export function FormsPage() {
+    const { notify } = useToast();
     const [forms, setForms] = useState<ContactForm[]>([]);
     const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
     const [selectedKey, setSelectedKey] = useState("");
@@ -45,6 +48,7 @@ export function FormsPage() {
     const [successMessage, setSuccessMessage] = useState("");
     const [fields, setFields] = useState<FormField[]>([{ ...emptyField }]);
     const [error, setError] = useState("");
+    const [deleteKey, setDeleteKey] = useState<string | null>(null);
     const admin = isAdmin();
     const selected = forms.find((form) => form.key === selectedKey);
     const emailFields = useMemo(
@@ -88,10 +92,13 @@ export function FormsPage() {
             };
             if (editingKey) await api.updateForm(editingKey, body);
             else await api.createForm(body);
+            notify(editingKey ? t("forms.updated") : t("forms.created"));
             resetForm();
             await load();
         } catch (caught) {
-            setError(caught instanceof Error ? caught.message : "Save failed");
+            const message = caught instanceof Error ? caught.message : "Save failed";
+            setError(message);
+            notify(message, "error");
         }
     }
 
@@ -145,10 +152,15 @@ export function FormsPage() {
     }
 
     async function remove(keyToDelete: string) {
-        if (!window.confirm(t("forms.deleteConfirm"))) return;
-        await api.deleteForm(keyToDelete);
-        if (editingKey === keyToDelete) resetForm();
-        await load();
+        try {
+            await api.deleteForm(keyToDelete);
+            setDeleteKey(null);
+            if (editingKey === keyToDelete) resetForm();
+            await load();
+            notify(t("forms.deleted"));
+        } catch (caught) {
+            notify(caught instanceof Error ? caught.message : "Delete failed", "error");
+        }
     }
 
     const setField = (index: number, patch: Partial<FormField>) => {
@@ -161,7 +173,7 @@ export function FormsPage() {
 
     return (
         <div className="grid gap-5">
-            <h1 className="text-2xl font-semibold tracking-tight text-stone-950">
+            <h1 className="page-title">
                 {t("forms.title")}
             </h1>
 
@@ -448,7 +460,7 @@ export function FormsPage() {
                                 {admin && (
                                     <button
                                         className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-2 text-sm text-red-700 hover:bg-red-50"
-                                        onClick={() => remove(form.key)}
+                                        onClick={() => setDeleteKey(form.key)}
                                     >
                                         <Trash2 size={16} />
                                         {t("common.delete")}
@@ -517,6 +529,25 @@ export function FormsPage() {
                     </div>
                 )}
             </Panel>
+            {deleteKey && (
+                <Modal
+                    title={t("forms.deleteTitle")}
+                    description={`/forms/${deleteKey}/submit`}
+                    onClose={() => setDeleteKey(null)}
+                    footer={
+                        <>
+                            <button type="button" className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700" onClick={() => setDeleteKey(null)}>
+                                {t("common.cancel")}
+                            </button>
+                            <button type="button" className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" onClick={() => void remove(deleteKey)}>
+                                {t("common.delete")}
+                            </button>
+                        </>
+                    }
+                >
+                    <p className="text-sm leading-6 text-stone-600">{t("forms.deleteConfirm")}</p>
+                </Modal>
+            )}
         </div>
     );
 }

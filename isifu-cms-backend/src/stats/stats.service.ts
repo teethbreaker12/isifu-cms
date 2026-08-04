@@ -7,16 +7,14 @@ export class StatsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async overview(role: Role) {
-    const [entries, pages, media, formsResult] = await Promise.all([
+    const [entries, pages, media] = await Promise.all([
       this.prisma.contentEntry.count(),
       this.prisma.page.count(),
       this.prisma.mediaAsset.count(),
-      this.prisma.$queryRawUnsafe<Array<{ count: bigint | number }>>('SELECT COUNT(*) AS count FROM `Form`'),
     ]);
-    const forms = Number(formsResult[0]?.count ?? 0);
 
     if (role === Role.EDITOR) {
-      return { entries, pages, media, forms };
+      return { entries, pages, media };
     }
 
     const [models, users] = await Promise.all([
@@ -24,6 +22,6 @@ export class StatsService {
       this.prisma.user.count(),
     ]);
 
-    return { models, entries, pages, media, forms, users };
+    return { models, entries, pages, media, users };
   }
 }

@@ -194,7 +194,7 @@ function EditorShell({
               title={label}
               aria-label={label}
               className={`rounded p-2 transition ${
-                isActive ? 'bg-blue-600 text-white shadow-sm' : 'text-stone-600 hover:bg-white hover:text-stone-950'
+                isActive ? 'accent-bg shadow-sm' : 'text-stone-600 hover:bg-white hover:text-stone-950'
               }`}
               onClick={() => command(toolCommand, toolValue)}
             >

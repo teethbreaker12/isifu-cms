@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { api } from '../api/client';
 import { isAdmin } from '../auth';
+import { Modal } from '../components/Modal';
 import { PageBuilder } from '../components/PageBuilder';
 import { Panel } from '../components/Panel';
+import { useToast } from '../components/Toast';
 import { t } from '../i18n';
 import type { Page, PageBlock } from '../types/cms';
 
 export function PagesPage() {
+  const { notify } = useToast();
   const [pages, setPages] = useState<Page[]>([]);
   const [slug, setSlug] = useState('');
   const [title, setTitle] = useState('');
@@ -16,6 +19,7 @@ export function PagesPage() {
   const [blocks, setBlocks] = useState<PageBlock[]>([]);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [creatingPage, setCreatingPage] = useState(false);
+  const [deletePage, setDeletePage] = useState<Page | null>(null);
   const admin = isAdmin();
   const isEditing = creatingPage || Boolean(editingSlug);
 
@@ -23,13 +27,18 @@ export function PagesPage() {
   useEffect(() => void load(), []);
 
   async function save(nextPublished: boolean) {
-    if (editingSlug) {
-      await api.updatePage(editingSlug, { slug, title, seoTitle, seoDescription, blocks, published: nextPublished });
-    } else if (admin) {
-      await api.createPage({ slug, title, seoTitle, seoDescription, blocks, published: nextPublished });
+    try {
+      if (editingSlug) {
+        await api.updatePage(editingSlug, { slug, title, seoTitle, seoDescription, blocks, published: nextPublished });
+      } else if (admin) {
+        await api.createPage({ slug, title, seoTitle, seoDescription, blocks, published: nextPublished });
+      }
+      resetForm();
+      await load();
+      notify(nextPublished ? t('pages.published') : t('pages.saved'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'Save failed', 'error');
     }
-    resetForm();
-    await load();
   }
 
   function submit(event: React.FormEvent) {
@@ -68,15 +77,20 @@ export function PagesPage() {
   }
 
   async function remove(page: Page) {
-    if (!window.confirm(t('pages.deleteConfirm'))) return;
-    await api.deletePage(page.slug);
-    if (editingSlug === page.slug) resetForm();
-    await load();
+    try {
+      await api.deletePage(page.slug);
+      setDeletePage(null);
+      if (editingSlug === page.slug) resetForm();
+      await load();
+      notify(t('pages.deleted'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'Delete failed', 'error');
+    }
   }
 
   return (
     <div className="grid gap-5">
-      <h1 className="text-2xl font-semibold tracking-tight text-stone-950">{t('pages.title')}</h1>
+      <h1 className="page-title">{t('pages.title')}</h1>
       <Panel
         title={t('pages.editor')}
         action={
@@ -128,7 +142,7 @@ export function PagesPage() {
                   <Pencil size={16} />
                   {t('common.edit')}
                 </button>
-                <button className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-2 text-sm text-red-700 hover:bg-red-50" onClick={() => remove(page)}>
+                <button className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-2 text-sm text-red-700 hover:bg-red-50" onClick={() => setDeletePage(page)}>
                   <Trash2 size={16} />
                   {t('common.delete')}
                 </button>
@@ -137,6 +151,25 @@ export function PagesPage() {
           ))}
         </div>
       </Panel>
+      {deletePage && (
+        <Modal
+          title={t('pages.deleteTitle')}
+          description={`/${deletePage.slug}`}
+          onClose={() => setDeletePage(null)}
+          footer={
+            <>
+              <button type="button" className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700" onClick={() => setDeletePage(null)}>
+                {t('common.cancel')}
+              </button>
+              <button type="button" className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" onClick={() => void remove(deletePage)}>
+                {t('common.delete')}
+              </button>
+            </>
+          }
+        >
+          <p className="text-sm leading-6 text-stone-600">{t('pages.deleteConfirm')}</p>
+        </Modal>
+      )}
     </div>
   );
 }

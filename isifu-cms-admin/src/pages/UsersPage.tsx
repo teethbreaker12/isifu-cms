@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { ShieldCheck, ShieldOff, Trash2, UserPlus } from 'lucide-react';
 import { api, setCurrentUser } from '../api/client';
+import { Modal } from '../components/Modal';
 import { Panel } from '../components/Panel';
+import { useToast } from '../components/Toast';
 import { t } from '../i18n';
 import type { Role, User } from '../types/cms';
 
 export function UsersPage() {
+  const { notify } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -15,6 +18,8 @@ export function UsersPage() {
   const [setup, setSetup] = useState<{ secret: string; qrCode: string; otpauth: string } | null>(null);
   const [totpCode, setTotpCode] = useState('');
   const [passwords, setPasswords] = useState<Record<number, string>>({});
+  const [deleteUser, setDeleteUser] = useState<User | null>(null);
+  const [resetUser, setResetUser] = useState<User | null>(null);
 
   const load = () => api.users().then(setUsers).catch(() => setUsers([]));
 
@@ -32,36 +37,58 @@ export function UsersPage() {
       setPassword('');
       setRole('EDITOR');
       await load();
+      notify(t('users.created'));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not create user');
+      const message = caught instanceof Error ? caught.message : 'Could not create user';
+      setError(message);
+      notify(message, 'error');
     }
   }
 
   async function remove(user: User) {
-    if (!window.confirm(`${t('common.delete')} ${user.email}?`)) return;
-    await api.deleteUser(user.id);
-    await load();
+    try {
+      await api.deleteUser(user.id);
+      setDeleteUser(null);
+      await load();
+      notify(t('users.deleted'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'Delete failed', 'error');
+    }
   }
 
   async function disableUser2fa(user: User) {
-    await api.disableUserTwoFactor(user.id);
-    await load();
+    try {
+      await api.disableUserTwoFactor(user.id);
+      await load();
+      notify(t('settings.twoFactorDisabled'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'Could not disable 2FA', 'error');
+    }
   }
 
   async function resetPassword(user: User) {
     const password = passwords[user.id];
     if (!password || password.length < 8) return;
-    await api.updateUser(user.id, { password });
-    setPasswords((current) => ({ ...current, [user.id]: '' }));
-    await load();
+    try {
+      await api.updateUser(user.id, { password });
+      setPasswords((current) => ({ ...current, [user.id]: '' }));
+      setResetUser(null);
+      await load();
+      notify(t('users.passwordReset'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'Could not reset password', 'error');
+    }
   }
 
   async function setupMy2fa() {
     setError('');
     try {
       setSetup(await api.setupTwoFactor());
+      notify(t('users.twoFactorSetupStarted'));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not start 2FA setup');
+      const message = caught instanceof Error ? caught.message : 'Could not start 2FA setup';
+      setError(message);
+      notify(message, 'error');
     }
   }
 
@@ -74,22 +101,30 @@ export function UsersPage() {
       setSetup(null);
       setCurrentUser(await api.me());
       await load();
+      notify(t('settings.twoFactorEnabled'));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Invalid two-factor code');
+      const message = caught instanceof Error ? caught.message : 'Invalid two-factor code';
+      setError(message);
+      notify(message, 'error');
     }
   }
 
   async function disableMy2fa() {
-    await api.disableMyTwoFactor();
-    setSetup(null);
-    setTotpCode('');
-    setCurrentUser(await api.me());
-    await load();
+    try {
+      await api.disableMyTwoFactor();
+      setSetup(null);
+      setTotpCode('');
+      setCurrentUser(await api.me());
+      await load();
+      notify(t('settings.twoFactorDisabled'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'Could not disable 2FA', 'error');
+    }
   }
 
   return (
     <div className="grid gap-5">
-      <h1 className="text-2xl font-semibold tracking-tight text-stone-950">{t('users.title')}</h1>
+      <h1 className="page-title">{t('users.title')}</h1>
       <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
         <Panel title={t('users.create')}>
           <form className="grid gap-4" onSubmit={createUser}>
@@ -149,7 +184,7 @@ export function UsersPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-md bg-stone-100 px-2 py-1 text-xs font-semibold text-stone-700">{user.role}</span>
-                <span className={`rounded-md px-2 py-1 text-xs font-semibold ${user.twoFactorEnabled ? 'bg-blue-50 text-blue-700' : 'bg-stone-100 text-stone-600'}`}>
+                <span className={`rounded-md px-2 py-1 text-xs font-semibold ${user.twoFactorEnabled ? 'accent-soft border' : 'bg-stone-100 text-stone-600'}`}>
                   {user.twoFactorEnabled ? t('users.twoFactorEnabled') : t('users.twoFactorDisabled')}
                 </span>
                 {user.twoFactorEnabled && (
@@ -165,10 +200,10 @@ export function UsersPage() {
                   value={passwords[user.id] ?? ''}
                   onChange={(event) => setPasswords((current) => ({ ...current, [user.id]: event.target.value }))}
                 />
-                <button className="rounded-md border border-stone-300 px-3 py-2 text-sm" onClick={() => resetPassword(user)}>
+                <button className="rounded-md border border-stone-300 px-3 py-2 text-sm" onClick={() => setResetUser(user)} disabled={!passwords[user.id] || passwords[user.id].length < 8}>
                   {t('users.resetPassword')}
                 </button>
-                <button className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-2 text-sm text-red-700 hover:bg-red-50" onClick={() => remove(user)}>
+                <button className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-2 text-sm text-red-700 hover:bg-red-50" onClick={() => setDeleteUser(user)}>
                   <Trash2 size={16} />
                   {t('common.delete')}
                 </button>
@@ -177,6 +212,44 @@ export function UsersPage() {
           ))}
         </div>
       </Panel>
+      {resetUser && (
+        <Modal
+          title={t('users.resetPassword')}
+          description={resetUser.email}
+          onClose={() => setResetUser(null)}
+          footer={
+            <>
+              <button type="button" className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700" onClick={() => setResetUser(null)}>
+                {t('common.cancel')}
+              </button>
+              <button type="button" className="accent-bg rounded-md px-3 py-2 text-sm font-semibold" onClick={() => void resetPassword(resetUser)}>
+                {t('common.update')}
+              </button>
+            </>
+          }
+        >
+          <p className="text-sm leading-6 text-stone-600">{t('users.resetPasswordConfirm')}</p>
+        </Modal>
+      )}
+      {deleteUser && (
+        <Modal
+          title={t('users.deleteTitle')}
+          description={deleteUser.email}
+          onClose={() => setDeleteUser(null)}
+          footer={
+            <>
+              <button type="button" className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700" onClick={() => setDeleteUser(null)}>
+                {t('common.cancel')}
+              </button>
+              <button type="button" className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" onClick={() => void remove(deleteUser)}>
+                {t('common.delete')}
+              </button>
+            </>
+          }
+        >
+          <p className="text-sm leading-6 text-stone-600">{t('users.deleteConfirm')}</p>
+        </Modal>
+      )}
     </div>
   );
 }

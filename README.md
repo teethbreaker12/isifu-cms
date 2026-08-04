@@ -5,7 +5,7 @@ ISIFU CMS to prosty headless CMS z panelem administracyjnym. Projekt składa si�
 - `isifu-cms-backend` - API w NestJS, Prisma i MySQL/MariaDB.
 - `isifu-cms-admin` - panel administracyjny w React + Vite.
 
-Backend udostępnia REST API pod prefiksem `/api`, obsługuje logowanie JWT, role `ADMIN` i `EDITOR`, 2FA TOTP, upload mediów, strony statyczne oraz dynamiczne modele treści. Admin jest budowany jako statyczna aplikacja Vite i serwowany przez backend pod ukrytym slugiem, np. `/admin-xyz`.
+Backend udostępnia REST API pod prefiksem `/api`, obsługuje logowanie JWT, role `ADMIN` i `EDITOR`, 2FA TOTP, upload mediów, strony statyczne oraz dynamiczne modele treści. Admin jest budowany jako statyczna aplikacja Vite i serwowany przez backend pod slugiem, np. `/admin`.
 
 ## Co robi projekt
 
@@ -38,33 +38,62 @@ Dane wpisów są zapisywane w dwóch formach: jako snapshot JSON przy wpisie ora
 ├── isifu-cms-admin/      # React + Vite admin panel
 ├── isifu-cms-backend/    # NestJS + Prisma API
 ├── update.sh             # prosty skrypt aktualizacji i builda
+├── package.json          # wspolne komendy dla calego CMS
 ├── API.md                # dokumentacja REST API
 └── README.md             # ten opis
 ```
 
 ## Lokalny start
 
-### Backend
+Wymagania:
 
-1. Utwórz bazę MySQL/MariaDB.
-2. Skopiuj env:
+- Node.js 22.22 lub nowszy,
+- MySQL/MariaDB,
+- klient `mysql` w terminalu, jezeli chcesz uzyc `npm run db:create` albo `npm run db:setup`.
 
-```bash
-cd isifu-cms-backend
-cp .env.example .env
-```
-
-3. Uzupełnij `DATABASE_URL`, sekrety JWT i pozostałe zmienne.
-4. Zainstaluj paczki i przygotuj bazę:
+Z katalogu glownego repozytorium:
 
 ```bash
 npm install
-npm run prisma:generate
-npm run prisma:migrate
-npm run seed
+npm run db:setup
+npm run dev
 ```
 
-5. Uruchom backend:
+`npm install` tworzy brakujace pliki `.env` z `.env.example` i instaluje zaleznosci roota oraz obu aplikacji. `npm run db:setup` tworzy baze z `DATABASE_URL`, odpala migracje i seed. `npm run dev` startuje jednoczesnie backend i panel admina.
+
+Do `npm run db:create` i `npm run db:setup` potrzebny jest lokalny klient `mysql`. Jezeli go nie masz, utworz baze recznie i uruchom `npm run db:migrate`.
+
+Najwazniejsze komendy z katalogu glownego:
+
+```bash
+npm run dev          # backend + admin
+npm run build        # admin + backend
+npm run db:create    # tworzy baze z DATABASE_URL, jezeli jej nie ma
+npm run db:setup     # db:create + db:migrate + seed
+npm run db:generate  # prisma generate
+npm run db:migrate   # prisma migrate dev
+npm run db:deploy    # prisma migrate deploy
+npm run seed         # pierwszy admin/testowe dane
+npm run start:prod   # start zbudowanego backendu
+```
+
+### Backend
+
+1. Utwórz bazę MySQL/MariaDB.
+2. Przygotuj projekt z katalogu glownego:
+
+```bash
+npm run setup
+```
+
+3. Uzupełnij `DATABASE_URL`, sekrety JWT i pozostałe zmienne.
+4. Przygotuj bazę:
+
+```bash
+npm run db:setup
+```
+
+5. Backend mozna uruchomic osobno:
 
 ```bash
 npm run dev
@@ -78,12 +107,10 @@ http://localhost:3000/api
 
 ### Admin
 
-W drugim terminalu:
+Admin mozna uruchomic osobno:
 
 ```bash
 cd isifu-cms-admin
-cp .env.example .env
-npm install
 npm run dev
 ```
 
@@ -91,7 +118,7 @@ Przykładowe zmienne admina:
 
 ```bash
 VITE_API_URL="http://localhost:3000/api"
-VITE_ADMIN_SLUG="admin-xyz"
+VITE_ADMIN_SLUG="admin"
 ```
 
 ## Wdrożenie produkcyjne
@@ -107,7 +134,7 @@ Przykładowe produkcyjne adresy:
 
 ```text
 https://api.twojadomena.pl/api
-https://api.twojadomena.pl/admin-xyz
+https://api.twojadomena.pl/admin
 ```
 
 ### Kolejność wdrożenia
@@ -116,7 +143,6 @@ https://api.twojadomena.pl/admin-xyz
 2. Zbuduj admin:
 
 ```bash
-cd isifu-cms-admin
 npm install
 npm run build
 ```
@@ -124,11 +150,7 @@ npm run build
 3. Przygotuj backend:
 
 ```bash
-cd ../isifu-cms-backend
-npm install
-npm run prisma:generate
-npm run prisma:deploy
-npm run build
+npm run db:deploy
 npm run seed
 ```
 
@@ -148,7 +170,7 @@ Backend:
 DATABASE_URL="mysql://user:password@localhost:3306/database"
 PORT=3000
 API_PREFIX=api
-ADMIN_SLUG=admin-xyz
+ADMIN_SLUG=admin
 ADMIN_DIST="../isifu-cms-admin/dist"
 JWT_ACCESS_SECRET="long-random-secret"
 JWT_REFRESH_SECRET="another-long-random-secret"
@@ -163,7 +185,7 @@ Admin:
 
 ```bash
 VITE_API_URL="https://api.twojadomena.pl/api"
-VITE_ADMIN_SLUG="admin-xyz"
+VITE_ADMIN_SLUG="admin"
 ```
 
 `ADMIN_SLUG` w backendzie i `VITE_ADMIN_SLUG` w adminie muszą oznaczać ten sam adres panelu.
@@ -180,20 +202,15 @@ W repozytorium jest prosty skrypt:
 
 ```bash
 git pull
-cd isifu-cms-admin
+npm install
 npm run build
-cd ..
-cd isifu-cms-backend
-npm run build
-cd ..
+npm run db:deploy
 echo "DONE!"
 ```
 
 Ten skrypt robi tylko aktualizację kodu i build obu części. Nie robi:
 
-- `npm install`,
 - migracji Prisma,
-- `prisma generate`,
 - restartu aplikacji Node.js,
 - seeda bazy,
 - kopii zapasowej bazy.
@@ -204,14 +221,9 @@ Bezpieczniejsza pełna procedura aktualizacji na serwerze:
 
 ```bash
 git pull
-cd isifu-cms-admin
 npm install
 npm run build
-cd ../isifu-cms-backend
-npm install
-npm run prisma:generate
-npm run prisma:deploy
-npm run build
+npm run db:deploy
 ```
 
 Następnie należy zrestartować aplikację Node.js w panelu hostingu.
@@ -222,12 +234,11 @@ W trakcie pracy nad wdrożeniem najważniejsze problemy dotyczyły nie samego ko
 
 ### 1. Panel admina musi być zbudowany przed startem backendu
 
-Backend serwuje admina z katalogu `dist`. Jeżeli `isifu-cms-admin/dist` nie istnieje, panel pod `/admin-xyz` nie będzie działał poprawnie.
+Backend serwuje admina z katalogu `dist`. Jeżeli `isifu-cms-admin/dist` nie istnieje, panel pod `/admin` nie będzie działał poprawnie.
 
 Rozwiązanie:
 
 ```bash
-cd isifu-cms-admin
 npm run build
 ```
 
@@ -250,17 +261,9 @@ Objaw złej ścieżki:
 
 ### 3. Trzeba rozróżnić build admina i build backendu
 
-Admin:
+Admin i backend:
 
 ```bash
-cd isifu-cms-admin
-npm run build
-```
-
-Backend:
-
-```bash
-cd isifu-cms-backend
 npm run build
 ```
 
@@ -271,17 +274,17 @@ To są dwa osobne buildy. Sam build backendu nie przebuduje panelu.
 Jeżeli zmienia się schemat bazy, samo `npm run build` nie wystarczy. Na produkcji trzeba uruchomić:
 
 ```bash
-npm run prisma:generate
-npm run prisma:deploy
+npm run db:generate
+npm run db:deploy
 ```
 
 Lokalnie w development można używać:
 
 ```bash
-npm run prisma:migrate
+npm run db:migrate
 ```
 
-Na produkcji lepsze jest `prisma:deploy`, bo odpala gotowe migracje bez trybu developerskiego.
+Na produkcji lepsze jest `db:deploy`, bo odpala gotowe migracje bez trybu developerskiego.
 
 ### 5. `seed` nie zawsze powinien być odpalany automatycznie
 
@@ -307,7 +310,6 @@ Objaw złego CORS:
 Zmiana `VITE_API_URL` po buildzie nie zmienia gotowych plików w `dist`. Po zmianie `.env` admina trzeba ponownie wykonać:
 
 ```bash
-cd isifu-cms-admin
 npm run build
 ```
 
@@ -320,12 +322,6 @@ npm run start:prod
 ```
 
 Ta komenda uruchamia:
-
-```bash
-node dist//src/main.js
-```
-
-Podwójny slash w ścieżce nie powinien przeszkadzać, ale jeżeli hosting ma problem z komendą, można użyć równoważnie:
 
 ```bash
 node dist/src/main.js
@@ -357,8 +353,8 @@ Przed zgłoszeniem, że produkcja nie działa, sprawdź:
 - czy `isifu-cms-admin/dist/index.html` istnieje,
 - czy `ADMIN_DIST` wskazuje na właściwy katalog,
 - czy backend ma poprawne `DATABASE_URL`,
-- czy wykonano `npm run prisma:deploy`,
-- czy wykonano `npm run prisma:generate`,
+- czy wykonano `npm run db:deploy`,
+- czy wykonano `npm run db:generate`,
 - czy `VITE_API_URL` wskazuje na produkcyjne `/api`,
 - czy po zmianie `VITE_API_URL` admin został ponownie zbudowany,
 - czy `CORS_ORIGIN` zawiera domenę panelu,

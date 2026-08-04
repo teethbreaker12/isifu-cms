@@ -84,7 +84,7 @@ export class AuthService {
       throw new BadRequestException('Two-factor authentication is already enabled');
     }
     const secret = authenticator.generateSecret();
-    const service = this.config.get<string>('CMS_NAME', 'OlMedia CMS');
+    const service = this.config.get<string>('CMS_NAME', 'ISIFU CMS');
     const otpauth = authenticator.keyuri(user.email, service, secret);
     const qrCode = await QRCode.toDataURL(otpauth);
     await this.prisma.user.update({ where: { id: user.id }, data: { twoFactorSecret: secret } });

@@ -1,0 +1,24 @@
+{
+  "name": "isifu-cms",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "npm run setup:env && npm run install:apps",
+    "setup": "npm run setup:env && npm run install:apps && npm run db:generate",
+    "setup:env": "node scripts/setup-env.mjs",
+    "install:apps": "npm install --prefix isifu-cms-backend && npm install --prefix isifu-cms-admin",
+    "dev": "concurrently -n backend,admin -c blue,green \"npm run dev --prefix isifu-cms-backend\" \"npm run dev --prefix isifu-cms-admin\"",
+    "build": "npm run build --prefix isifu-cms-admin && npm run build --prefix isifu-cms-backend",
+    "start": "npm run start --prefix isifu-cms-backend",
+    "start:prod": "npm run start:prod --prefix isifu-cms-backend",
+    "db:create": "node scripts/create-db.mjs",
+    "db:setup": "npm run db:create && npm run db:migrate && npm run seed",
+    "db:generate": "npm run prisma:generate --prefix isifu-cms-backend",
+    "db:migrate": "npm run prisma:migrate --prefix isifu-cms-backend",
+    "db:deploy": "npm run prisma:deploy --prefix isifu-cms-backend",
+    "seed": "npm run seed --prefix isifu-cms-backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

@@ -1,20 +1,21 @@
-# OlMedia CMS Admin
+# ISIFU CMS Admin
 
 React + Vite admin panel for the NestJS CMS.
 
 ## Local Setup
 
 ```bash
-cp .env.example .env
-npm install
+npm run setup
 npm run dev
 ```
+
+Run these commands from the repository root. The setup command creates `isifu-cms-admin/.env` if it is missing and installs both apps.
 
 Set:
 
 ```bash
 VITE_API_URL="http://localhost:3000/api"
-VITE_ADMIN_SLUG="admin-xyz"
+VITE_ADMIN_SLUG="admin"
 ```
 
 ## Production

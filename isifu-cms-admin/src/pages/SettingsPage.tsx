@@ -1,18 +1,34 @@
 import { useEffect, useState } from 'react';
 import { ShieldCheck, ShieldOff } from 'lucide-react';
 import { api, getCurrentUser, setCurrentUser } from '../api/client';
+import { isAdmin } from '../auth';
+import { Modal } from '../components/Modal';
 import { Panel } from '../components/Panel';
+import { useToast } from '../components/Toast';
 import { t } from '../i18n';
+import { useTheme, type Accent } from '../theme';
 import type { User } from '../types/cms';
 
+const accentOptions: Array<{ value: Accent; color: string }> = [
+  { value: 'blue', color: '#2563eb' },
+  { value: 'green', color: '#0f766e' },
+  { value: 'violet', color: '#7c3aed' },
+  { value: 'amber', color: '#b45309' },
+  { value: 'rose', color: '#be123c' },
+  { value: 'slate', color: '#475569' },
+];
+
 export function SettingsPage() {
+  const { notify } = useToast();
+  const { accent, setAccent } = useTheme();
+  const admin = isAdmin();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [user, setUser] = useState<User | null>(() => getCurrentUser());
   const [setup, setSetup] = useState<{ secret: string; qrCode: string; otpauth: string } | null>(null);
   const [totpCode, setTotpCode] = useState('');
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
 
   async function refreshCurrentUser() {
     const freshUser = await api.me();
@@ -26,19 +42,26 @@ export function SettingsPage() {
 
   async function changePassword(event: React.FormEvent) {
     event.preventDefault();
-    await api.changePassword({ currentPassword, newPassword });
-    setCurrentPassword('');
-    setNewPassword('');
-    setMessage(t('settings.passwordChanged'));
+    try {
+      await api.changePassword({ currentPassword, newPassword });
+      setCurrentPassword('');
+      setNewPassword('');
+      setPasswordModalOpen(false);
+      notify(t('settings.passwordChanged'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'Could not change password', 'error');
+    }
   }
 
   async function setupMy2fa() {
     setError('');
-    setMessage('');
     try {
       setSetup(await api.setupTwoFactor());
+      notify(t('users.twoFactorSetupStarted'));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not start 2FA setup');
+      const message = caught instanceof Error ? caught.message : 'Could not start 2FA setup';
+      setError(message);
+      notify(message, 'error');
     }
   }
 
@@ -50,9 +73,11 @@ export function SettingsPage() {
       setTotpCode('');
       setSetup(null);
       await refreshCurrentUser();
-      setMessage(t('settings.twoFactorEnabled'));
+      notify(t('settings.twoFactorEnabled'));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Invalid two-factor code');
+      const message = caught instanceof Error ? caught.message : 'Invalid two-factor code';
+      setError(message);
+      notify(message, 'error');
     }
   }
 
@@ -62,25 +87,59 @@ export function SettingsPage() {
     setSetup(null);
     setTotpCode('');
     await refreshCurrentUser();
-    setMessage(t('settings.twoFactorDisabled'));
+    notify(t('settings.twoFactorDisabled'));
   }
 
   return (
     <div className="grid gap-5">
-      <h1 className="text-2xl font-semibold tracking-tight text-stone-950">{t('settings.title')}</h1>
+      <h1 className="page-title">{t('settings.title')}</h1>
       <div className="grid gap-5 lg:grid-cols-2">
+        <Panel title={t('settings.accent')}>
+          <div className="grid gap-4">
+            <p className="text-sm leading-6 text-stone-600">{t('settings.accentHelp')}</p>
+            {!admin && <p className="text-sm leading-6 text-stone-500">{t('settings.accentAdminOnly')}</p>}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {accentOptions.map((option) => {
+                const active = accent === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`flex min-h-12 items-center gap-3 rounded-md border px-3 py-2 text-left text-sm font-semibold ${
+                      active ? 'accent-soft shadow-sm' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'
+                    } disabled:cursor-not-allowed disabled:opacity-55`}
+                    disabled={!admin}
+                    onClick={() => {
+                      if (admin) setAccent(option.value);
+                    }}
+                    aria-pressed={active}
+                  >
+                    <span
+                      className="h-5 w-5 shrink-0 rounded-full border border-black/10"
+                      style={{ backgroundColor: option.color }}
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0 truncate">{t(`settings.accent.${option.value}`)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </Panel>
+
         <Panel title={t('settings.password')}>
-          <form className="grid gap-4" onSubmit={changePassword}>
-            <input className="rounded-md border border-stone-300 px-3 py-2" type="password" required placeholder={t('settings.currentPassword')} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
-            <input className="rounded-md border border-stone-300 px-3 py-2" type="password" required minLength={8} placeholder={t('settings.newPassword')} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
-            <button className="w-full rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white sm:w-fit">{t('settings.changePassword')}</button>
-          </form>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm leading-6 text-stone-600">{t('settings.passwordHelp')}</p>
+            <button type="button" className="w-full rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white sm:w-fit" onClick={() => setPasswordModalOpen(true)}>
+              {t('settings.changePassword')}
+            </button>
+          </div>
         </Panel>
 
         <Panel title={t('users.twoFactor')}>
           <div className="grid gap-4">
             <div className="flex items-center gap-2">
-              <span className={`rounded-md px-2 py-1 text-xs font-semibold ${user?.twoFactorEnabled ? 'bg-blue-50 text-blue-700' : 'bg-stone-100 text-stone-600'}`}>
+              <span className={`rounded-md px-2 py-1 text-xs font-semibold ${user?.twoFactorEnabled ? 'accent-soft border' : 'bg-stone-100 text-stone-600'}`}>
                 {user?.twoFactorEnabled ? t('users.twoFactorEnabled') : t('users.twoFactorDisabled')}
               </span>
             </div>
@@ -111,7 +170,22 @@ export function SettingsPage() {
         </Panel>
       </div>
       {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{error}</div>}
-      {message && <div className="rounded-md bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700">{message}</div>}
+      {passwordModalOpen && (
+        <Modal title={t('settings.changePassword')} description={t('settings.passwordModalText')} onClose={() => setPasswordModalOpen(false)}>
+          <form className="grid gap-4" onSubmit={changePassword}>
+            <input className="rounded-md border border-stone-300 px-3 py-2" type="password" required placeholder={t('settings.currentPassword')} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoFocus />
+            <input className="rounded-md border border-stone-300 px-3 py-2" type="password" required minLength={8} placeholder={t('settings.newPassword')} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+            <div className="flex justify-end gap-2">
+              <button type="button" className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700" onClick={() => setPasswordModalOpen(false)}>
+                {t('common.cancel')}
+              </button>
+              <button className="accent-bg rounded-md px-3 py-2 text-sm font-semibold">
+                {t('settings.changePassword')}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

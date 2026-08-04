@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { api } from "../api/client";
+import { Modal } from "../components/Modal";
 import { Panel } from "../components/Panel";
+import { useToast } from "../components/Toast";
 import { t } from "../i18n";
 import type { ContentField, ContentType, FieldType } from "../types/cms";
 
@@ -13,12 +15,15 @@ const emptyField: ContentField = {
 };
 
 export function ContentTypesPage() {
+    const { notify } = useToast();
     const [items, setItems] = useState<ContentType[]>([]);
     const [name, setName] = useState("");
     const [key, setKey] = useState("");
     const [fields, setFields] = useState<ContentField[]>([{ ...emptyField }]);
     const [editingKey, setEditingKey] = useState<string | null>(null);
     const [error, setError] = useState("");
+    const [modelModalOpen, setModelModalOpen] = useState(false);
+    const [deleteKey, setDeleteKey] = useState<string | null>(null);
 
     const load = () => api.contentTypes().then(setItems);
     useEffect(() => void load(), []);
@@ -34,8 +39,11 @@ export function ContentTypesPage() {
             }
             resetForm();
             await load();
+            notify(editingKey ? t("models.updated") : t("models.created"));
         } catch (caught) {
-            setError(caught instanceof Error ? caught.message : "Save failed");
+            const message = caught instanceof Error ? caught.message : "Save failed";
+            setError(message);
+            notify(message, "error");
         }
     }
 
@@ -62,6 +70,7 @@ export function ContentTypesPage() {
                 }),
             ),
         );
+        setModelModalOpen(true);
     }
 
     function resetForm() {
@@ -70,34 +79,44 @@ export function ContentTypesPage() {
         setFields([{ ...emptyField }]);
         setEditingKey(null);
         setError("");
+        setModelModalOpen(false);
     }
 
     async function remove(keyToDelete: string) {
-        if (!window.confirm(t("models.deleteConfirm"))) return;
-        await api.deleteContentType(keyToDelete);
-        if (editingKey === keyToDelete) resetForm();
-        await load();
+        try {
+            await api.deleteContentType(keyToDelete);
+            setDeleteKey(null);
+            if (editingKey === keyToDelete) resetForm();
+            await load();
+            notify(t("models.deleted"));
+        } catch (caught) {
+            notify(caught instanceof Error ? caught.message : "Delete failed", "error");
+        }
     }
 
     return (
         <div className="grid gap-5">
-            <h1 className="text-2xl font-semibold tracking-tight text-stone-950">
-                {t("models.title")}
-            </h1>
-            <Panel
-                title={t("models.editor")}
-                action={
-                    editingKey ? (
-                        <button
-                            type="button"
-                            className="inline-flex items-center gap-2 rounded-md border border-stone-300 px-3 py-2 text-sm"
-                            onClick={resetForm}
-                        >
-                            <X size={16} />
-                            {t("common.cancel")}
-                        </button>
-                    ) : null
-                }
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h1 className="page-title">
+                    {t("models.title")}
+                </h1>
+                <button
+                    type="button"
+                    className="accent-bg inline-flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold sm:w-fit"
+                    onClick={() => {
+                        resetForm();
+                        setModelModalOpen(true);
+                    }}
+                >
+                    <Plus size={16} />
+                    {t("models.new")}
+                </button>
+            </div>
+            {modelModalOpen && (
+            <Modal
+                title={editingKey ? t("models.editor") : t("models.new")}
+                description={t("models.modalText")}
+                onClose={resetForm}
             >
                 <form onSubmit={submit} className="grid gap-4">
                     <div className="grid gap-3 lg:grid-cols-2">
@@ -327,7 +346,8 @@ export function ContentTypesPage() {
                         </button>
                     </div>
                 </form>
-            </Panel>
+            </Modal>
+            )}
             <Panel title={t("models.existing")}>
                 <div className="grid gap-3">
                     {items.map((item) => (
@@ -353,7 +373,7 @@ export function ContentTypesPage() {
                                 </button>
                                 <button
                                     className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-2 text-sm text-red-700 hover:bg-red-50"
-                                    onClick={() => remove(item.key)}
+                                    onClick={() => setDeleteKey(item.key)}
                                 >
                                     <Trash2 size={16} />
                                     {t("common.delete")}
@@ -363,6 +383,25 @@ export function ContentTypesPage() {
                     ))}
                 </div>
             </Panel>
+            {deleteKey && (
+                <Modal
+                    title={t("models.deleteTitle")}
+                    description={`/${deleteKey}`}
+                    onClose={() => setDeleteKey(null)}
+                    footer={
+                        <>
+                            <button type="button" className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700" onClick={() => setDeleteKey(null)}>
+                                {t("common.cancel")}
+                            </button>
+                            <button type="button" className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" onClick={() => void remove(deleteKey)}>
+                                {t("common.delete")}
+                            </button>
+                        </>
+                    }
+                >
+                    <p className="text-sm leading-6 text-stone-600">{t("models.deleteConfirm")}</p>
+                </Modal>
+            )}
         </div>
     );
 }

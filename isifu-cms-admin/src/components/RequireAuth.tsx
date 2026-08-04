@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router';
 import { useEffect } from 'react';
 import { api, getAccessToken, setCurrentUser } from '../api/client';
 import { isAdmin } from '../auth';

@@ -27,11 +27,11 @@ async function bootstrap() {
     prefix: `/${apiPrefix}/uploads/`,
   });
 
-  const adminSlug = config.get<string>('ADMIN_SLUG', 'admin-xyz').replace(/^\/+|\/+$/g, '');
-  const adminDistConfig = config.get<string>('ADMIN_DIST', '../olmedia-cms-admin/dist');
+  const adminSlug = config.get<string>('ADMIN_SLUG', 'admin').replace(/^\/+|\/+$/g, '');
+  const adminDistConfig = config.get<string>('ADMIN_DIST', '../isifu-cms-admin/dist');
   const adminDist = isAbsolute(adminDistConfig) ? adminDistConfig : join(process.cwd(), adminDistConfig);
   app.use(`/${apiPrefix}/health`, (_req: Request, res: Response) => {
-    res.json({ ok: true, service: 'OlMedia CMS API' });
+    res.json({ ok: true, service: 'ISIFU CMS API' });
   });
   app.use(/^\/$/, (_req: Request, res: Response) => {
     res.redirect(302, `/${adminSlug}/`);
