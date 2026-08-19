@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import { isAdmin } from "../auth";
 import { Modal } from "../components/Modal";
 import { Panel } from "../components/Panel";
+import { SelectField } from "../components/SelectField";
 import { useToast } from "../components/Toast";
 import { t } from "../i18n";
 import type {
@@ -264,22 +265,18 @@ export function FormsPage() {
                                                 })
                                             }
                                         />
-                                        <select
-                                            className="rounded-md border border-stone-300 px-3 py-2"
+                                        <SelectField
                                             value={field.type}
-                                            onChange={(event) =>
+                                            options={fieldTypes.map((type) => ({
+                                                value: type,
+                                                label: t(`formFields.${type}`),
+                                            }))}
+                                            onChange={(next) =>
                                                 setField(index, {
-                                                    type: event.target
-                                                        .value as FormFieldType,
+                                                    type: next as FormFieldType,
                                                 })
                                             }
-                                        >
-                                            {fieldTypes.map((type) => (
-                                                <option key={type} value={type}>
-                                                    {t(`formFields.${type}`)}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        />
                                         <label className="flex items-center gap-2 text-sm text-stone-600">
                                             <input
                                                 type="checkbox"
@@ -362,28 +359,18 @@ export function FormsPage() {
                                 {t("forms.responderEnabled")}
                             </label>
                             <div className="grid gap-3 lg:grid-cols-2">
-                                <select
-                                    className="rounded-md border border-stone-300 px-3 py-2 disabled:bg-stone-100"
+                                <SelectField
                                     disabled={!responderEnabled}
                                     value={responderEmailField}
-                                    onChange={(event) =>
-                                        setResponderEmailField(
-                                            event.target.value,
-                                        )
-                                    }
-                                >
-                                    <option value="">
-                                        {t("forms.emailField")}
-                                    </option>
-                                    {emailFields.map((field) => (
-                                        <option
-                                            key={field.key}
-                                            value={field.key}
-                                        >
-                                            {field.label}
-                                        </option>
-                                    ))}
-                                </select>
+                                    options={[
+                                        { value: "", label: t("forms.emailField") },
+                                        ...emailFields.map((field) => ({
+                                            value: field.key,
+                                            label: field.label,
+                                        })),
+                                    ]}
+                                    onChange={setResponderEmailField}
+                                />
                                 <input
                                     className="rounded-md border border-stone-300 px-3 py-2 disabled:bg-stone-100"
                                     disabled={!responderEnabled}

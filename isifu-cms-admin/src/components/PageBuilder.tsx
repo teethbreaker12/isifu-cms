@@ -5,6 +5,8 @@ import { GripVertical, Plus, Trash2 } from 'lucide-react';
 import { t } from '../i18n';
 import type { ContentField, FieldType, PageBlock } from '../types/cms';
 import { DynamicForm } from './DynamicForm';
+import { IconButton, InfoTooltip } from './IconButton';
+import { SelectField } from './SelectField';
 
 type PageFieldType = Extract<FieldType, 'text' | 'richtext' | 'textarea' | 'image' | 'date'>;
 type PageField = Pick<ContentField, 'label' | 'key' | 'type' | 'required'>;
@@ -127,67 +129,98 @@ function SortableBlock({
   };
 
   return (
-    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className="rounded-md border border-stone-200 bg-white p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className="grid gap-4 rounded-lg border border-stone-200 bg-white p-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          {canManageStructure && (
+            <IconButton label={t('pageBuilder.dragSection')} icon={<GripVertical size={18} />} className="mt-1" {...attributes} {...listeners} />
+          )}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-md bg-stone-100 px-2 py-1 text-xs font-semibold text-stone-600">{t('pageBuilder.section')}</span>
+              <span className="min-w-0 truncate text-sm font-semibold text-stone-950">{block.type || 'section'}</span>
+            </div>
+            <div className="mt-2">
+              <InfoTooltip label={t('pageBuilder.sectionHelp')} />
+            </div>
+          </div>
+        </div>
         {canManageStructure && (
-          <button type="button" className="rounded p-1 text-stone-500 hover:bg-stone-100" {...attributes} {...listeners} aria-label="Drag block">
-            <GripVertical size={18} />
-          </button>
-        )}
-        {canManageStructure ? (
-          <input
-            className="min-w-0 flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm"
-            placeholder={t('pageBuilder.blockType')}
-            value={block.type}
-            onChange={(event) => onChange({ ...block, type: normalizeKey(event.target.value) || 'section' })}
-          />
-        ) : (
-          <div className="mr-auto rounded-md bg-stone-100 px-2 py-1 text-xs font-semibold text-stone-600">{block.type}</div>
-        )}
-        {canManageStructure && (
-          <button type="button" className="rounded p-1 text-red-600 hover:bg-red-50" onClick={onRemove} aria-label="Remove block">
-            <Trash2 size={18} />
-          </button>
+          <IconButton label={t('pageBuilder.removeSection')} icon={<Trash2 size={18} />} tone="danger" className="w-full md:w-10" onClick={onRemove} />
         )}
       </div>
 
       {canManageStructure && (
-        <div className="mb-4 grid gap-3 rounded-md bg-stone-50 p-3">
-          {fields.map((field, index) => (
-            <div key={index} className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_160px_44px]">
-              <input
-                className="rounded-md border border-stone-300 px-3 py-2 text-sm"
-                placeholder={t('pageBuilder.fieldKey')}
-                value={field.key}
-                onChange={(event) => updateField(index, { key: event.target.value })}
-              />
-              <input
-                className="rounded-md border border-stone-300 px-3 py-2 text-sm"
-                placeholder={t('pageBuilder.fieldLabel')}
-                value={field.label}
-                onChange={(event) => updateField(index, { label: event.target.value })}
-              />
-              <select
-                className="rounded-md border border-stone-300 px-3 py-2 text-sm"
-                value={field.type}
-                onChange={(event) => updateField(index, { type: event.target.value as PageFieldType })}
-              >
-                {pageFieldTypes.map((type) => <option key={type} value={type}>{t(`fields.${type}`)}</option>)}
-              </select>
-              <button type="button" className="grid h-10 w-full place-items-center rounded-md border border-red-200 text-red-700 hover:bg-red-50 lg:w-10" onClick={() => removeField(index)}>
-                <Trash2 size={16} />
-              </button>
+        <label className="grid gap-1 text-sm font-medium text-stone-700">
+          <span>{t('pageBuilder.blockTypeLabel')}</span>
+          <input
+            className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+            placeholder={t('pageBuilder.blockType')}
+            value={block.type}
+            onChange={(event) => onChange({ ...block, type: normalizeKey(event.target.value) || 'section' })}
+          />
+        </label>
+      )}
+
+      {canManageStructure && (
+        <div className="grid gap-3 rounded-md bg-stone-50 p-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h4 className="text-sm font-semibold text-stone-950">{t('pageBuilder.fieldsTitle')}</h4>
+              <p className="mt-1 text-xs leading-5 text-stone-500">{t('pageBuilder.fieldsHelp')}</p>
             </div>
-          ))}
-          <button type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-stone-300 px-3 py-2 text-sm sm:w-fit" onClick={addField}>
-            <Plus size={16} />
-            {t('pageBuilder.addField')}
-          </button>
+            <button type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-medium sm:w-fit" onClick={addField}>
+              <Plus size={16} />
+              {t('pageBuilder.addField')}
+            </button>
+          </div>
+          <div className="grid gap-3">
+            {fields.map((field, index) => (
+              <div key={index} className="grid gap-3 rounded-md border border-stone-200 bg-white p-3">
+                <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_200px_44px]">
+                  <label className="grid gap-1 text-sm font-medium text-stone-700">
+                    <span>{t('pageBuilder.fieldKeyLabel')}</span>
+                    <input
+                      className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+                      placeholder={t('pageBuilder.fieldKey')}
+                      value={field.key}
+                      onChange={(event) => updateField(index, { key: event.target.value })}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm font-medium text-stone-700">
+                    <span>{t('pageBuilder.fieldLabelLabel')}</span>
+                    <input
+                      className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+                      placeholder={t('pageBuilder.fieldLabel')}
+                      value={field.label}
+                      onChange={(event) => updateField(index, { label: event.target.value })}
+                    />
+                  </label>
+                  <div className="grid gap-1 text-sm font-medium text-stone-700">
+                    <span>{t('pageBuilder.fieldTypeLabel')}</span>
+                    <SelectField
+                      value={field.type}
+                      options={pageFieldTypes.map((type) => ({ value: type, label: t(`fields.${type}`) }))}
+                      onChange={(next) => updateField(index, { type: next as PageFieldType })}
+                    />
+                  </div>
+                  <IconButton label={t('models.removeField')} icon={<Trash2 size={16} />} tone="danger" className="w-full self-end xl:w-10" onClick={() => removeField(index)} />
+                </div>
+                <InfoTooltip label={t(`fields.help.${field.type}`)} />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
       {activeFields.length > 0 ? (
-        <DynamicForm fields={activeFields} value={values} onChange={setValues} />
+        <div className="grid gap-3">
+          <div>
+            <h4 className="text-sm font-semibold text-stone-950">{t('pageBuilder.contentTitle')}</h4>
+            <p className="mt-1 text-xs leading-5 text-stone-500">{t('pageBuilder.contentHelp')}</p>
+          </div>
+          <DynamicForm fields={activeFields} value={values} onChange={setValues} variant="entry" />
+        </div>
       ) : (
         <p className="text-sm text-stone-500">{t('pageBuilder.noFields')}</p>
       )}
@@ -221,7 +254,7 @@ export function PageBuilder({ blocks, onChange, canManageStructure = true }: { b
         </SortableContext>
       </DndContext>
       {canManageStructure && (
-        <button type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-stone-900 px-3 py-2 text-sm font-medium text-white sm:w-fit" onClick={addBlock}>
+        <button type="button" className="accent-bg inline-flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold sm:w-fit" onClick={addBlock}>
           <Plus size={16} />
           {t('pageBuilder.addSection')}
         </button>

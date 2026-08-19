@@ -183,6 +183,7 @@ Dostępne typy pól:
 - `lucideIcon`
 - `boolean`
 - `date`
+- `select`
 - `repeater`
 
 Klucze typu treści i pól muszą pasować do wzorca:
@@ -190,6 +191,13 @@ Klucze typu treści i pól muszą pasować do wzorca:
 ```text
 ^[a-z][a-z0-9_]*$
 ```
+
+Status modelu treści:
+
+- `draft`
+- `published`
+
+Modele utworzone bez pola `status` dostają domyślnie `draft`. Publiczne odczyty wpisów z `published=true` zwracają dane tylko dla modeli ze statusem `published`.
 
 ### `GET /content-types`
 
@@ -211,6 +219,7 @@ curl -X POST http://localhost:3000/api/content-types \
     "name": "Aktualności",
     "key": "news",
     "description": "Wpisy aktualności",
+    "status": "published",
     "fields": [
       {
         "label": "Tytuł",
@@ -225,19 +234,35 @@ curl -X POST http://localhost:3000/api/content-types \
         "type": "richtext",
         "required": true,
         "order": 1
+      },
+      {
+        "label": "Kategoria",
+        "key": "category",
+        "type": "select",
+        "required": false,
+        "settings": {
+          "options": [
+            { "value": "news", "label": "Aktualności" },
+            { "value": "events", "label": "Wydarzenia" }
+          ]
+        },
+        "order": 2
       }
     ]
   }'
 ```
 
+Pole `select` przyjmuje opcje w `settings.options`. Opcje można zapisać jako tablicę obiektów `{ "value": "...", "label": "..." }`, tablicę stringów albo tekst rozdzielony przecinkami/nowymi liniami. String w formacie `value|Label` pozwala ustawić osobną etykietę.
+
 ### `PUT /content-types/:key`
 
-Wymaga roli `ADMIN`. Aktualizuje nazwę, opis i pełną listę pól modelu. Pola nieobecne w żądaniu zostaną usunięte z konfiguracji i tabeli dynamicznej.
+Wymaga roli `ADMIN`. Aktualizuje nazwę, opis, status i pełną listę pól modelu. Pola nieobecne w żądaniu zostaną usunięte z konfiguracji i tabeli dynamicznej.
 
 ```json
 {
   "name": "Aktualności",
   "description": "Zaktualizowany opis",
+  "status": "draft",
   "fields": [
     {
       "label": "Tytuł",
@@ -275,6 +300,7 @@ Zwraca wpisy dla typu treści, gdzie `:type` to `key` modelu, np. `news`.
 Opcjonalny parametr:
 
 - `published=true` - zwraca tylko wpisy ze statusem `published`.
+- Gdy `published=true`, model treści również musi mieć status `published`; inaczej API odpowie jak dla nieistniejącego zasobu.
 
 ```bash
 curl "http://localhost:3000/api/content/news?published=true"
@@ -397,6 +423,8 @@ Wymaga roli `ADMIN` albo `EDITOR`. Usuwa stronę.
 ## Media
 
 Wszystkie endpointy `/media` wymagają JWT i roli `ADMIN` albo `EDITOR`.
+
+Panel admina pozwala dodatkowo porządkować media w lokalnych katalogach widoku, zaznaczać wiele plików checkboxami oraz zbiorczo przenosić albo usuwać zasoby. Katalogi mediów są organizacją panelu zapisywaną lokalnie w przeglądarce; backend przechowuje same rekordy plików.
 
 Dozwolone typy plików:
 

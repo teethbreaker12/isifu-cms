@@ -12,11 +12,12 @@ Backend udostępnia REST API pod prefiksem `/api`, obsługuje logowanie JWT, rol
 CMS pozwala zarządzać:
 
 - modelami treści, czyli własnymi typami wpisów,
+- publikacją i szkicami modeli treści oraz wpisów,
 - wpisami dla tych modeli,
-- stronami i blokami page-buildera,
-- mediami przesyłanymi lokalnie,
+- stronami, szkicami stron i blokami page-buildera,
+- mediami przesyłanymi lokalnie, z katalogami widoku i akcjami zbiorczymi,
 - użytkownikami i rolami,
-- ustawieniami wielojęzycznego panelu.
+- ustawieniami wielojęzycznego panelu, motywu i koloru akcentu.
 
 Dostępne typy pól to:
 
@@ -27,7 +28,10 @@ Dostępne typy pól to:
 - `lucideIcon` - nazwa ikony z pakietu `lucide-react`, np. `Camera`, `Mail`, `ShieldCheck`,
 - `boolean` - checkbox,
 - `date` - data wybierana z natywnego kalendarza,
+- `select` - lista wyboru z opcjami zdefiniowanymi w modelu,
 - `repeater` - dane tablicowe/JSON.
+
+Modele treści i wpisy mają status `draft` albo `published`. Publiczne API z parametrem `published=true` zwraca wpisy tylko wtedy, gdy opublikowany jest zarówno model treści, jak i sam wpis. Strony używają osobnej flagi `published`.
 
 Dane wpisów są zapisywane w dwóch formach: jako snapshot JSON przy wpisie oraz w dynamicznych tabelach MySQL tworzonych dla modeli treści. Dzięki temu panel może być elastyczny, a API może szybko zwracać gotowe dane.
 
@@ -205,17 +209,16 @@ git pull
 npm install
 npm run build
 npm run db:deploy
-echo "DONE!"
+echo "Update completed successfully!"
 ```
 
-Ten skrypt robi tylko aktualizację kodu i build obu części. Nie robi:
+Ten skrypt robi aktualizację kodu, instaluje zależności, buduje admina i backend oraz wdraża migracje Prisma przez `npm run db:deploy`. Nie robi:
 
-- migracji Prisma,
 - restartu aplikacji Node.js,
 - seeda bazy,
 - kopii zapasowej bazy.
 
-Po zmianach w zależnościach, schemacie Prisma albo konfiguracji trzeba wykonać dodatkowe komendy ręcznie.
+Po zmianach w konfiguracji albo po pierwszym wdrożeniu trzeba wykonać dodatkowe komendy ręcznie, np. `npm run seed`.
 
 Bezpieczniejsza pełna procedura aktualizacji na serwerze:
 
@@ -383,7 +386,7 @@ Najważniejsze endpointy:
 
 `ADMIN` może zarządzać modelami, wpisami, stronami, mediami, użytkownikami i ustawieniami.
 
-`EDITOR` może zarządzać wpisami i treścią stron, ale nie powinien zmieniać struktury modeli ani zarządzać użytkownikami.
+`EDITOR` może zarządzać wpisami, mediami, zgłoszeniami formularzy oraz treścią stron w zakresie dopuszczonym przez backend. Nie może zmieniać struktury modeli, formularzy ani zarządzać użytkownikami.
 
 ## Notatki developerskie
 
@@ -396,4 +399,4 @@ Po dodaniu nowego typu pola trzeba zwykle zaktualizować:
 - page-builder w `isifu-cms-admin/src/components/PageBuilder.tsx`,
 - tłumaczenia w `isifu-cms-admin/src/translations/*.json`.
 
-Tak zostało dodane pole `lucideIcon`.
+Aktualnie obsługiwane pola treści to `text`, `textarea`, `richtext`, `image`, `lucideIcon`, `boolean`, `date`, `select` i `repeater`.

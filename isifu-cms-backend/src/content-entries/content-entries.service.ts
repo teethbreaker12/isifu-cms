@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { normalizeFieldValue } from '../common/field-types';
+import { normalizeFieldValue, parseSelectOptions } from '../common/field-types';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpsertEntryDto } from './dto';
 
@@ -9,7 +9,7 @@ export class ContentEntriesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(contentTypeKey: string, publishedOnly = false) {
-    const contentType = await this.getContentType(contentTypeKey);
+    const contentType = await this.getContentType(contentTypeKey, publishedOnly);
     return this.prisma.contentEntry.findMany({
       where: { contentTypeId: contentType.id, ...(publishedOnly ? { status: 'published' } : {}) },
       orderBy: { createdAt: 'desc' },
@@ -17,7 +17,7 @@ export class ContentEntriesService {
   }
 
   async findOne(contentTypeKey: string, idOrSlug: string, publishedOnly = false) {
-    const contentType = await this.getContentType(contentTypeKey);
+    const contentType = await this.getContentType(contentTypeKey, publishedOnly);
     const numericId = Number(idOrSlug);
     const entry = await this.prisma.contentEntry.findFirst({
       where: {
@@ -68,21 +68,32 @@ export class ContentEntriesService {
     return this.prisma.contentEntry.delete({ where: { id } });
   }
 
-  private async getContentType(key: string) {
+  private async getContentType(key: string, publishedOnly = false) {
     const contentType = await this.prisma.contentType.findUnique({
       where: { key },
       include: { fields: { orderBy: { order: 'asc' } } },
     });
     if (!contentType) throw new NotFoundException('Content type not found');
+    if (publishedOnly && contentType.status !== 'published') throw new NotFoundException('Content type not found');
     return contentType;
   }
 
-  private normalizeData(fields: { key: string; type: string; required: boolean }[], data: Record<string, unknown>) {
+  private normalizeData(
+    fields: { key: string; type: string; required: boolean; settings?: Prisma.JsonValue }[],
+    data: Record<string, unknown>,
+  ) {
     const output: Record<string, unknown> = {};
     for (const field of fields) {
       const value = normalizeFieldValue(field.type as never, data[field.key]);
       if (field.required && (value === null || value === undefined || value === '')) {
         throw new BadRequestException(`${field.key} is required`);
+      }
+      if (field.type === 'select' && typeof value === 'string') {
+        const options = parseSelectOptions(field.settings as Record<string, unknown> | null | undefined);
+        const optionValues = options.map((option) => option.value);
+        if (optionValues.length > 0 && !optionValues.includes(value)) {
+          throw new BadRequestException(`${field.key} must be one of: ${optionValues.join(', ')}`);
+        }
       }
       output[field.key] = value;
     }

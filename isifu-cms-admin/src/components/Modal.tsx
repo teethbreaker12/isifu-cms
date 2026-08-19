@@ -7,12 +7,14 @@ export function Modal({
   children,
   onClose,
   footer,
+  size = 'default',
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   onClose: () => void;
   footer?: ReactNode;
+  size?: 'default' | 'wide';
 }) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -30,7 +32,7 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/50 p-4 backdrop-blur-sm" onMouseDown={onClose}>
       <section
-        className="quiet-reveal app-panel max-h-[90dvh] w-full max-w-xl overflow-hidden rounded-lg"
+        className={`quiet-reveal app-panel max-h-[90dvh] w-full overflow-hidden rounded-lg ${size === 'wide' ? 'max-w-6xl' : 'max-w-xl'}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"

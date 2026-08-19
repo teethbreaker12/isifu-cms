@@ -1,5 +1,6 @@
 export type Role = 'ADMIN' | 'EDITOR';
-export type FieldType = 'text' | 'textarea' | 'richtext' | 'image' | 'lucideIcon' | 'boolean' | 'date' | 'repeater';
+export type PublishStatus = 'draft' | 'published';
+export type FieldType = 'text' | 'textarea' | 'richtext' | 'image' | 'lucideIcon' | 'boolean' | 'date' | 'select' | 'repeater';
 
 export type User = {
   id: number;
@@ -24,13 +25,14 @@ export type ContentType = {
   name: string;
   key: string;
   description?: string;
+  status: PublishStatus;
   fields: ContentField[];
 };
 
 export type ContentEntry = {
   id: number;
   slug?: string;
-  status: 'draft' | 'published';
+  status: PublishStatus;
   data: Record<string, unknown>;
   updatedAt: string;
 };

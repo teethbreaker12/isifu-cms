@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { t } from '../i18n';
+import { SelectField } from './SelectField';
 
 type Props = {
   value: string;
@@ -172,18 +173,14 @@ function EditorShell({
   return (
     <div className={`flex ${fullscreen ? 'h-full' : ''} flex-col overflow-hidden rounded-md border border-stone-300 bg-white`}>
       <div className="flex flex-wrap items-center gap-1 border-b border-stone-200 bg-stone-50 p-2">
-        <select
-          className="h-9 rounded-md border border-stone-300 px-2 text-sm"
+        <SelectField
+          className="w-44"
+          buttonClassName="h-9 px-2 text-sm"
           value={block}
-          onChange={(event) => changeBlock(event.target.value)}
+          options={blockOptions}
+          onChange={changeBlock}
           onMouseUp={refreshActiveState}
-        >
-          {blockOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        />
         {tools.map(({ label, icon: Icon, command: toolCommand, value: toolValue, state }) => {
           const activeKey = state ?? toolCommand;
           const isActive = active.has(activeKey);

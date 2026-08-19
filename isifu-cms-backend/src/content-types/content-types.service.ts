@@ -34,6 +34,7 @@ export class ContentTypesService {
         name: dto.name,
         key: dto.key,
         description: dto.description,
+        status: dto.status ?? 'draft',
         tableName,
         fields: { create: this.fieldCreateInput(dto.fields) },
       },
@@ -53,6 +54,7 @@ export class ContentTypesService {
         data: {
           name: dto.name,
           description: dto.description,
+          status: dto.status,
           fields: { create: this.fieldCreateInput(dto.fields) },
         },
         include: { fields: { orderBy: { order: 'asc' } } },

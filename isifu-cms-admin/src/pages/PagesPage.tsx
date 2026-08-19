@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { api } from '../api/client';
 import { isAdmin } from '../auth';
+import { IconButton } from '../components/IconButton';
 import { Modal } from '../components/Modal';
 import { PageBuilder } from '../components/PageBuilder';
 import { Panel } from '../components/Panel';
+import { PublishActions, StatusBadge, StatusSummary } from '../components/PublishControls';
 import { useToast } from '../components/Toast';
 import { t } from '../i18n';
-import type { Page, PageBlock } from '../types/cms';
+import type { Page, PageBlock, PublishStatus } from '../types/cms';
 
 export function PagesPage() {
   const { notify } = useToast();
@@ -22,6 +24,7 @@ export function PagesPage() {
   const [deletePage, setDeletePage] = useState<Page | null>(null);
   const admin = isAdmin();
   const isEditing = creatingPage || Boolean(editingSlug);
+  const currentStatus: PublishStatus = pages.find((page) => page.slug === editingSlug)?.published ? 'published' : 'draft';
 
   const load = () => api.pages().then(setPages);
   useEffect(() => void load(), []);
@@ -41,9 +44,10 @@ export function PagesPage() {
     }
   }
 
-  function submit(event: React.FormEvent) {
+  function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    void save(false);
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    void save(submitter?.value === 'publish');
   }
 
   function startCreate() {
@@ -90,7 +94,10 @@ export function PagesPage() {
 
   return (
     <div className="grid gap-5">
-      <h1 className="page-title">{t('pages.title')}</h1>
+      <div>
+        <h1 className="page-title">{t('pages.title')}</h1>
+        <p className="page-subtitle mt-1">{t('pages.subtitle')}</p>
+      </div>
       <Panel
         title={t('pages.editor')}
         action={
@@ -110,22 +117,52 @@ export function PagesPage() {
         {!isEditing ? (
           <p className="text-sm leading-6 text-stone-600">{t('pages.editorHint')}</p>
         ) : (
-        <form className="grid gap-4" onSubmit={submit}>
-          <div className="grid gap-3 lg:grid-cols-2">
-            <input className="rounded-md border border-stone-300 px-3 py-2" placeholder={t('pages.slug')} value={slug} onChange={(event) => setSlug(event.target.value)} />
-            <input className="rounded-md border border-stone-300 px-3 py-2" placeholder={t('pages.titlePlaceholder')} value={title} onChange={(event) => setTitle(event.target.value)} />
-          </div>
-          <input className="rounded-md border border-stone-300 px-3 py-2" placeholder={t('pages.seoTitle')} value={seoTitle} onChange={(event) => setSeoTitle(event.target.value)} />
-          <textarea className="min-h-20 rounded-md border border-stone-300 px-3 py-2" placeholder={t('pages.seoDescription')} value={seoDescription} onChange={(event) => setSeoDescription(event.target.value)} />
-          <PageBuilder blocks={blocks} onChange={setBlocks} canManageStructure={admin} />
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button type="submit" className="w-full rounded-md border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-800 sm:w-fit">
-              {t('common.saveDraft')}
-            </button>
-            <button type="button" className="w-full rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white sm:w-fit" onClick={() => void save(true)}>
-              {t('common.publish')}
-            </button>
-          </div>
+        <form className="grid gap-5" onSubmit={submit}>
+          <section className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50/70 p-4">
+            <div>
+              <h3 className="text-sm font-semibold text-stone-950">{t('pages.metaTitle')}</h3>
+              <p className="mt-1 text-xs leading-5 text-stone-500">{t('pages.metaHelp')}</p>
+            </div>
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_280px]">
+              <label className="grid gap-1 text-sm font-medium text-stone-700">
+                <span>{t('pages.slugLabel')}</span>
+                <input className="rounded-md border border-stone-300 px-3 py-2 font-normal" placeholder={t('pages.slug')} value={slug} onChange={(event) => setSlug(event.target.value)} />
+              </label>
+              <label className="grid gap-1 text-sm font-medium text-stone-700">
+                <span>{t('pages.titleLabel')}</span>
+                <input className="rounded-md border border-stone-300 px-3 py-2 font-normal" placeholder={t('pages.titlePlaceholder')} value={title} onChange={(event) => setTitle(event.target.value)} />
+              </label>
+              <div className="grid gap-1 text-sm font-medium text-stone-700">
+                <span>{t('common.status')}</span>
+                <StatusSummary status={currentStatus} />
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50/70 p-4">
+            <div>
+              <h3 className="text-sm font-semibold text-stone-950">{t('pages.seoSectionTitle')}</h3>
+              <p className="mt-1 text-xs leading-5 text-stone-500">{t('pages.seoHelp')}</p>
+            </div>
+            <label className="grid gap-1 text-sm font-medium text-stone-700">
+              <span>{t('pages.seoTitleLabel')}</span>
+              <input className="rounded-md border border-stone-300 px-3 py-2 font-normal" placeholder={t('pages.seoTitle')} value={seoTitle} onChange={(event) => setSeoTitle(event.target.value)} />
+            </label>
+            <label className="grid gap-1 text-sm font-medium text-stone-700">
+              <span>{t('pages.seoDescriptionLabel')}</span>
+              <textarea className="min-h-24 rounded-md border border-stone-300 px-3 py-2 font-normal leading-6" placeholder={t('pages.seoDescription')} value={seoDescription} onChange={(event) => setSeoDescription(event.target.value)} />
+            </label>
+          </section>
+
+          <section className="grid gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-stone-950">{t('pages.blocksTitle')}</h3>
+              <p className="mt-1 text-xs leading-5 text-stone-500">{t('pages.blocksHelp')}</p>
+            </div>
+            <PageBuilder blocks={blocks} onChange={setBlocks} canManageStructure={admin} />
+          </section>
+
+          <PublishActions status={currentStatus} onCancel={resetForm} />
         </form>
         )}
       </Panel>
@@ -135,17 +172,14 @@ export function PagesPage() {
             <div key={page.id} className="flex flex-col gap-3 rounded-md border border-stone-200 p-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <div className="font-semibold text-stone-950">{page.title}</div>
-                <div className="text-sm text-stone-500">/{page.slug} - {page.published ? 'published' : 'draft'}</div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-stone-500">
+                  <span>/{page.slug}</span>
+                  <StatusBadge status={page.published ? 'published' : 'draft'} />
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button className="inline-flex items-center gap-2 rounded-md border border-stone-300 px-3 py-2 text-sm" onClick={() => edit(page)}>
-                  <Pencil size={16} />
-                  {t('common.edit')}
-                </button>
-                <button className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-2 text-sm text-red-700 hover:bg-red-50" onClick={() => setDeletePage(page)}>
-                  <Trash2 size={16} />
-                  {t('common.delete')}
-                </button>
+                <IconButton label={t('common.edit')} icon={<Pencil size={16} />} onClick={() => edit(page)} />
+                <IconButton label={t('common.delete')} icon={<Trash2 size={16} />} tone="danger" onClick={() => setDeletePage(page)} />
               </div>
             </div>
           ))}

@@ -38,6 +38,10 @@ export class CreateContentTypeDto {
   @IsString()
   description?: string;
 
+  @IsOptional()
+  @IsIn(['draft', 'published'])
+  status?: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => FieldDto)
@@ -52,6 +56,10 @@ export class UpdateContentTypeDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsIn(['draft', 'published'])
+  status?: string;
 
   @IsArray()
   @ValidateNested({ each: true })

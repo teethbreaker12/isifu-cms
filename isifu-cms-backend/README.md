@@ -11,8 +11,10 @@ NestJS + Prisma + MySQL/MariaDB backend for ISIFU CMS.
 - TOTP 2FA compatible with Google Authenticator
 - Dynamic content model builder
 - Dynamic MySQL tables per content type, plus JSON entry snapshots for API reads
+- Draft/published status for content models and entries
 - Static pages with SEO fields and page-builder blocks
 - Local media uploads, ready to replace with FTP/S3-style storage later
+- Contact form builder with submission storage and SMTP notifications
 - CSRF exposure is avoided by using bearer tokens instead of cookie-based auth
 
 ## Local Setup
@@ -97,6 +99,29 @@ The admin panel will be available at `https://api.domain.com/admin`, and the API
 - `GET/POST/PATCH/DELETE /api/content/:type`
 - `GET/POST/PUT/DELETE /api/pages`
 - `POST /api/media/upload`
+- `GET/POST/PUT/DELETE /api/forms`
+- `POST /api/forms/:key/submit`
 - `GET/POST/PATCH/DELETE /api/users`
 
-Editors can manage entries and pages. Admins can additionally manage users and content models.
+Editors can manage entries, pages, media, form submissions, and selected page content. Admins can additionally manage users, forms, and content models.
+
+## Content Publishing
+
+Content models and entries both use a string status:
+
+- `draft`
+- `published`
+
+`GET /api/content/:type?published=true` returns entries only when the content model is `published` and each returned entry is also `published`. Pages use a separate boolean `published` flag and are filtered by `GET /api/pages?published=true`.
+
+Supported content field types are:
+
+- `text`
+- `textarea`
+- `richtext`
+- `image`
+- `lucideIcon`
+- `boolean`
+- `date`
+- `select`
+- `repeater`

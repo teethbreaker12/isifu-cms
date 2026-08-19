@@ -1,6 +1,6 @@
 {
   "name": "isifu-cms-admin",
-  "version": "1.10.0",
+  "version": "2.1",
   "private": true,
   "type": "module",
   "scripts": {

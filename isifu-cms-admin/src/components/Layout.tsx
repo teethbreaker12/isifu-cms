@@ -18,6 +18,7 @@ import { clearTokens, revokeCurrentSession } from "../api/client";
 import { isAdmin } from "../auth";
 import { getLanguage, setLanguage, t } from "../i18n";
 import { useTheme } from "../theme";
+import { SelectField } from "./SelectField";
 import { UserBadge } from "./UserBadge";
 
 import config from "../../package.json";
@@ -120,30 +121,30 @@ export function Layout() {
             <div className="mt-auto grid gap-3 border-t border-stone-200 px-3 pb-4 pt-4">
                 <UserBadge compact />
                 <div className="grid grid-cols-2 gap-2">
-                    <select
-                        className="w-full rounded-md border border-stone-300 bg-white px-2 py-2 text-xs font-medium text-stone-700"
+                    <SelectField
+                        className="min-w-0"
+                        buttonClassName="px-2 py-2 text-xs font-medium"
                         value={getLanguage()}
-                        onChange={(event) => setLanguage(event.target.value)}
-                        aria-label="Language"
-                    >
-                        <option value="en">English</option>
-                        <option value="pl">Polski</option>
-                        <option value="es">Español</option>
-                    </select>
-                    <select
-                        className="w-full rounded-md border border-stone-300 bg-white px-2 py-2 text-xs font-medium text-stone-700"
+                        options={[
+                            { value: "en", label: "English" },
+                            { value: "pl", label: "Polski" },
+                            { value: "es", label: "Español" },
+                        ]}
+                        onChange={setLanguage}
+                        ariaLabel="Language"
+                    />
+                    <SelectField
+                        className="min-w-0"
+                        buttonClassName="px-2 py-2 text-xs font-medium"
                         value={theme}
-                        onChange={(event) =>
-                            setTheme(
-                                event.target.value as "light" | "dark" | "system",
-                            )
-                        }
-                        aria-label="Theme"
-                    >
-                        <option value="system">{t("theme.system")}</option>
-                        <option value="light">{t("theme.light")}</option>
-                        <option value="dark">{t("theme.dark")}</option>
-                    </select>
+                        options={[
+                            { value: "system", label: t("theme.system") },
+                            { value: "light", label: t("theme.light") },
+                            { value: "dark", label: t("theme.dark") },
+                        ]}
+                        onChange={(next) => setTheme(next as "light" | "dark" | "system")}
+                        ariaLabel="Theme"
+                    />
                 </div>
                 <button
                     className="flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
