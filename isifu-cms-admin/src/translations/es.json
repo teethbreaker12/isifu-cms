@@ -86,7 +86,7 @@
   "entries.noModel": "Crea un modelo de contenido primero.",
   "entries.deleteConfirm": "¿Eliminar esta entrada?",
   "entries.metaTitle": "Datos de la entrada",
-  "entries.metaHelp": "El slug identifica la entrada en URLs e integraciones. El estado refleja como se guarda.",
+  "entries.metaHelp": "El slug se genera automaticamente desde el titulo de la entrada, pero puedes cambiarlo manualmente. El estado refleja como se guarda.",
   "entries.slugLabel": "Slug de la entrada",
   "entries.contentTitle": "Contenido de la entrada",
   "entries.contentHelp": "Los campos siguientes vienen del modelo actual. Las descripciones ayudan a usar el formato correcto.",

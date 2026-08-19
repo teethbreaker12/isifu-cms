@@ -7,7 +7,7 @@ export function StatusBadge({ status }: { status: PublishStatus }) {
 
   return (
     <span
-      className={`inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-semibold ${
+      className={`inline-flex w-fit max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-semibold ${
         status === 'published'
           ? 'border-[color:var(--app-accent-border)] bg-[color:var(--app-accent-soft)] text-[color:var(--app-accent)]'
           : 'border-stone-200 bg-stone-50 text-stone-600'
@@ -21,9 +21,9 @@ export function StatusBadge({ status }: { status: PublishStatus }) {
 
 export function StatusSummary({ status }: { status: PublishStatus }) {
   return (
-    <div className="flex min-h-10 items-center justify-between gap-3 rounded-md border border-stone-200 bg-white px-3 py-2">
+    <div className="grid min-h-10 min-w-0 gap-1 rounded-md border border-stone-200 bg-white px-3 py-2">
       <StatusBadge status={status} />
-      <span className="min-w-0 text-right text-xs leading-5 text-stone-500">
+      <span className="block min-w-0 truncate text-xs leading-5 text-stone-500">
         {status === 'published' ? t('common.publishedHelp') : t('common.draftHelp')}
       </span>
     </div>

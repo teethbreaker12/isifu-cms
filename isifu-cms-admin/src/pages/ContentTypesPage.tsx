@@ -16,6 +16,12 @@ const emptyField: ContentField = {
     type: "text",
     required: false,
 };
+const titleField: ContentField = {
+    label: "Tytul",
+    key: "title",
+    type: "text",
+    required: true,
+};
 const contentFieldTypes: FieldType[] = [
     "text",
     "textarea",
@@ -30,13 +36,28 @@ const contentFieldTypes: FieldType[] = [
 
 const configurableFieldTypes = new Set<FieldType>(["image", "select"]);
 
+function ensureTitleField(fields: ContentField[]) {
+    const existingTitle = fields.find((field) => field.key === "title");
+    const otherFields = fields.filter((field) => field.key !== "title");
+    return [
+        {
+            ...titleField,
+            ...existingTitle,
+            key: "title",
+            type: "text" as FieldType,
+            required: true,
+        },
+        ...otherFields,
+    ];
+}
+
 export function ContentTypesPage() {
     const { notify } = useToast();
     const [items, setItems] = useState<ContentType[]>([]);
     const [name, setName] = useState("");
     const [key, setKey] = useState("");
     const [status, setStatus] = useState<PublishStatus>("draft");
-    const [fields, setFields] = useState<ContentField[]>([{ ...emptyField }]);
+    const [fields, setFields] = useState<ContentField[]>([{ ...titleField }, { ...emptyField }]);
     const [editingKey, setEditingKey] = useState<string | null>(null);
     const [error, setError] = useState("");
     const [modelModalOpen, setModelModalOpen] = useState(false);
@@ -49,9 +70,9 @@ export function ContentTypesPage() {
         setError("");
         try {
             if (editingKey) {
-                await api.updateContentType(editingKey, { name, status: nextStatus, fields });
+                await api.updateContentType(editingKey, { name, status: nextStatus, fields: ensureTitleField(fields) });
             } else {
-                await api.createContentType({ name, key, status: nextStatus, fields });
+                await api.createContentType({ name, key, status: nextStatus, fields: ensureTitleField(fields) });
             }
             resetForm();
             await load();
@@ -75,7 +96,7 @@ export function ContentTypesPage() {
         setKey(item.key);
         setStatus(item.status ?? "draft");
         setFields(
-            item.fields.map(
+            ensureTitleField(item.fields.map(
                 ({
                     label,
                     key: fieldKey,
@@ -91,7 +112,7 @@ export function ContentTypesPage() {
                     settings,
                     order,
                 }),
-            ),
+            )),
         );
         setModelModalOpen(true);
     }
@@ -100,7 +121,7 @@ export function ContentTypesPage() {
         setName("");
         setKey("");
         setStatus("draft");
-        setFields([{ ...emptyField }]);
+        setFields([{ ...titleField }, { ...emptyField }]);
         setEditingKey(null);
         setError("");
         setModelModalOpen(false);
@@ -217,7 +238,9 @@ export function ContentTypesPage() {
                         </div>
 
                         <div className="grid gap-3">
-                            {fields.map((field, index) => (
+                            {fields.map((field, index) => {
+                                const isTitleField = field.key === "title";
+                                return (
                                 <div
                                     key={index}
                                     className="grid gap-4 rounded-lg border border-stone-200 bg-white p-4"
@@ -246,6 +269,7 @@ export function ContentTypesPage() {
                                             icon={<Trash2 size={16} />}
                                             tone="danger"
                                             className="w-full md:w-10"
+                                            disabled={isTitleField}
                                             onClick={() =>
                                                 setFields(
                                                     fields.length > 1
@@ -269,7 +293,8 @@ export function ContentTypesPage() {
                                         <label className="grid gap-1 text-sm font-medium text-stone-700">
                                             <span>{t("models.fieldKey")}</span>
                                             <input
-                                                className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+                                                className="rounded-md border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100"
+                                                disabled={isTitleField}
                                                 placeholder={t("models.fieldKeyPlaceholder")}
                                                 value={field.key}
                                                 onChange={(event) => updateField(index, { key: event.target.value })}
@@ -279,6 +304,7 @@ export function ContentTypesPage() {
                                             <span>{t("models.fieldType")}</span>
                                             <SelectField
                                                 value={field.type}
+                                                disabled={isTitleField}
                                                 options={contentFieldTypes.map((type) => ({
                                                     value: type,
                                                     label: t(`fields.${type}`),
@@ -290,6 +316,7 @@ export function ContentTypesPage() {
                                             <input
                                                 type="checkbox"
                                                 checked={field.required}
+                                                disabled={isTitleField}
                                                 onChange={(event) => updateField(index, { required: event.target.checked })}
                                             />
                                             {t("common.required")}
@@ -339,7 +366,8 @@ export function ContentTypesPage() {
                                         </div>
                                     )}
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </section>
 

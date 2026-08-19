@@ -86,7 +86,7 @@
   "entries.noModel": "Create a content model first.",
   "entries.deleteConfirm": "Delete this entry?",
   "entries.metaTitle": "Entry data",
-  "entries.metaHelp": "The slug identifies the entry in URLs and integrations. The status reflects how it is saved.",
+  "entries.metaHelp": "The slug is generated from the entry title automatically, but you can change it manually. The status reflects how it is saved.",
   "entries.slugLabel": "Entry slug",
   "entries.contentTitle": "Entry content",
   "entries.contentHelp": "The fields below come from the current content model. The descriptions help editors use the right data format.",

@@ -86,7 +86,7 @@
   "entries.noModel": "Najpierw utworz model tresci.",
   "entries.deleteConfirm": "Usunac ten wpis?",
   "entries.metaTitle": "Dane wpisu",
-  "entries.metaHelp": "Slug identyfikuje wpis w adresach i integracjach. Status okresla sposob zapisu.",
+  "entries.metaHelp": "Slug tworzy sie automatycznie z tytulu wpisu, ale mozesz zmienic go recznie. Status okresla sposob zapisu.",
   "entries.slugLabel": "Slug wpisu",
   "entries.contentTitle": "Tresc wpisu",
   "entries.contentHelp": "Pola ponizej wynikaja z aktualnego modelu tresci. Opisy pomagaja dobrac poprawny format danych.",

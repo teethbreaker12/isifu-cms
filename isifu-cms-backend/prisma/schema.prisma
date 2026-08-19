@@ -64,7 +64,7 @@ model ContentEntry {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
-  @@index([contentTypeId, slug])
+  @@unique([contentTypeId, slug])
 }
 
 model Page {

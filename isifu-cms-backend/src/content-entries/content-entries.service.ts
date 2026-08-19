@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import slugify from 'slugify';
 import { normalizeFieldValue, parseSelectOptions } from '../common/field-types';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpsertEntryDto } from './dto';
@@ -33,10 +34,12 @@ export class ContentEntriesService {
   async create(contentTypeKey: string, dto: UpsertEntryDto) {
     const contentType = await this.getContentType(contentTypeKey);
     const data = this.normalizeData(contentType.fields, dto.data);
+    const slug = this.entrySlug(dto.slug, data);
+    await this.assertUniqueSlug(contentType.id, slug);
     const entry = await this.prisma.contentEntry.create({
       data: {
         contentTypeId: contentType.id,
-        slug: dto.slug,
+        slug,
         status: dto.status ?? 'draft',
         data: data as Prisma.InputJsonObject,
       },
@@ -50,11 +53,13 @@ export class ContentEntriesService {
     const existing = await this.prisma.contentEntry.findFirst({ where: { id, contentTypeId: contentType.id } });
     if (!existing) throw new NotFoundException('Entry not found');
     const data = this.normalizeData(contentType.fields, dto.data);
+    const slug = this.entrySlug(dto.slug, data);
+    await this.assertUniqueSlug(contentType.id, slug, existing.id);
 
     await this.updateDynamicRow(contentType.tableName, existing.dynamicRowId, existing.id, contentType.fields, data);
     return this.prisma.contentEntry.update({
       where: { id },
-      data: { slug: dto.slug, status: dto.status ?? existing.status, data: data as Prisma.InputJsonObject },
+      data: { slug, status: dto.status ?? existing.status, data: data as Prisma.InputJsonObject },
     });
   }
 
@@ -83,6 +88,7 @@ export class ContentEntriesService {
     data: Record<string, unknown>,
   ) {
     const output: Record<string, unknown> = {};
+    const hasTitleField = fields.some((field) => field.key === 'title');
     for (const field of fields) {
       const value = normalizeFieldValue(field.type as never, data[field.key]);
       if (field.required && (value === null || value === undefined || value === '')) {
@@ -97,7 +103,35 @@ export class ContentEntriesService {
       }
       output[field.key] = value;
     }
+    if (!hasTitleField) {
+      const title = normalizeFieldValue('text' as never, data.title);
+      if (title === null || title === undefined || title === '') {
+        throw new BadRequestException('title is required');
+      }
+      output.title = title;
+    }
     return output;
+  }
+
+  private entrySlug(slug: string | undefined, data: Record<string, unknown>) {
+    const manualSlug = slug?.trim();
+    if (manualSlug) return manualSlug;
+    const title = data.title;
+    if (typeof title !== 'string' || !title.trim()) return undefined;
+    return slugify(title, { lower: true, strict: true, locale: 'pl', trim: true }) || undefined;
+  }
+
+  private async assertUniqueSlug(contentTypeId: number, slug: string | undefined, excludeEntryId?: number) {
+    if (!slug) return;
+    const existing = await this.prisma.contentEntry.findFirst({
+      where: {
+        contentTypeId,
+        slug,
+        ...(excludeEntryId ? { id: { not: excludeEntryId } } : {}),
+      },
+      select: { id: true },
+    });
+    if (existing) throw new BadRequestException('Slug already exists for this content type');
   }
 
   private async insertDynamicRow(tableName: string, entryId: number, fields: { key: string; type: string }[], data: Record<string, unknown>) {

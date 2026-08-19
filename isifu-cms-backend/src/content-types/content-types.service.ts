@@ -4,6 +4,13 @@ import { columnTypeForField } from '../common/field-types';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateContentTypeDto, FieldDto, UpdateContentTypeDto } from './dto';
 
+const titleField: FieldDto = {
+  label: 'Tytul',
+  key: 'title',
+  type: 'text',
+  required: true,
+};
+
 @Injectable()
 export class ContentTypesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -25,9 +32,10 @@ export class ContentTypesService {
   }
 
   async create(dto: CreateContentTypeDto) {
-    this.assertUniqueFields(dto.fields);
+    const fields = this.ensureTitleField(dto.fields);
+    this.assertUniqueFields(fields);
     const tableName = `content_${dto.key}`;
-    await this.ensureDynamicTable(tableName, dto.fields);
+    await this.ensureDynamicTable(tableName, fields);
 
     return this.prisma.contentType.create({
       data: {
@@ -36,16 +44,17 @@ export class ContentTypesService {
         description: dto.description,
         status: dto.status ?? 'draft',
         tableName,
-        fields: { create: this.fieldCreateInput(dto.fields) },
+        fields: { create: this.fieldCreateInput(fields) },
       },
       include: { fields: { orderBy: { order: 'asc' } } },
     });
   }
 
   async update(key: string, dto: UpdateContentTypeDto) {
-    this.assertUniqueFields(dto.fields);
+    const fields = this.ensureTitleField(dto.fields);
+    this.assertUniqueFields(fields);
     const existing = await this.findByKey(key);
-    await this.ensureDynamicTable(existing.tableName, dto.fields, existing.fields as FieldDto[]);
+    await this.ensureDynamicTable(existing.tableName, fields, existing.fields as FieldDto[]);
 
     return this.prisma.$transaction(async (tx) => {
       await tx.contentField.deleteMany({ where: { contentTypeId: existing.id } });
@@ -55,7 +64,7 @@ export class ContentTypesService {
           name: dto.name,
           description: dto.description,
           status: dto.status,
-          fields: { create: this.fieldCreateInput(dto.fields) },
+          fields: { create: this.fieldCreateInput(fields) },
         },
         include: { fields: { orderBy: { order: 'asc' } } },
       });
@@ -106,6 +115,21 @@ export class ContentTypesService {
       if (keys.has(field.key)) throw new BadRequestException(`Duplicate field key: ${field.key}`);
       keys.add(field.key);
     }
+  }
+
+  private ensureTitleField(fields: FieldDto[]) {
+    const existingTitle = fields.find((field) => field.key === 'title');
+    const otherFields = fields.filter((field) => field.key !== 'title');
+    return [
+      {
+        ...titleField,
+        ...existingTitle,
+        key: 'title',
+        type: 'text' as const,
+        required: true,
+      },
+      ...otherFields,
+    ];
   }
 
   private fieldCreateInput(fields: FieldDto[]) {
