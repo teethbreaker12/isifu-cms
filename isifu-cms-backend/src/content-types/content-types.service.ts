@@ -86,9 +86,9 @@ export class ContentTypesService {
     ];
     await this.prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS \`${tableName}\` (${baseSql.join(', ')})`);
 
-    const currentKeys = new Set(currentFields.map((field) => field.key));
+    const tableColumns = await this.getDynamicTableColumns(tableName);
     for (const field of nextFields) {
-      if (!currentKeys.has(field.key)) {
+      if (!tableColumns.has(field.key)) {
         await this.prisma.$executeRawUnsafe(
           `ALTER TABLE \`${tableName}\` ADD COLUMN \`${field.key}\` ${columnTypeForField(field.type)}`,
         );
@@ -103,10 +103,15 @@ export class ContentTypesService {
     }
 
     for (const field of currentFields) {
-      if (!nextFields.some((next) => next.key === field.key)) {
+      if (!nextFields.some((next) => next.key === field.key) && tableColumns.has(field.key)) {
         await this.prisma.$executeRawUnsafe(`ALTER TABLE \`${tableName}\` DROP COLUMN \`${field.key}\``);
       }
     }
+  }
+
+  private async getDynamicTableColumns(tableName: string) {
+    const rows = await this.prisma.$queryRawUnsafe<Array<{ Field: string }>>(`SHOW COLUMNS FROM \`${tableName}\``);
+    return new Set(rows.map((row) => row.Field));
   }
 
   private assertUniqueFields(fields: FieldDto[]) {
