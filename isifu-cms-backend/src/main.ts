@@ -8,6 +8,7 @@ import type { Request, Response } from 'express';
 import { isAbsolute, join } from 'node:path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { DetailedExceptionFilter } from './common/detailed-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -21,6 +22,7 @@ async function bootstrap() {
     origin: origins.length > 0 ? origins : true,
     credentials: true,
   });
+  app.useGlobalFilters(new DetailedExceptionFilter());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.setGlobalPrefix(apiPrefix);
   app.useStaticAssets(join(process.cwd(), config.get<string>('UPLOAD_DIR', './uploads')), {

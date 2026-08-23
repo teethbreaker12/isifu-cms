@@ -34,8 +34,7 @@ export class ContentEntriesService {
   async create(contentTypeKey: string, dto: UpsertEntryDto) {
     const contentType = await this.getContentType(contentTypeKey);
     const data = this.normalizeData(contentType.fields, dto.data);
-    const slug = this.entrySlug(dto.slug, data);
-    await this.assertUniqueSlug(contentType.id, slug);
+    const slug = await this.uniqueEntrySlug(contentType.id, this.entrySlug(dto.slug, data));
     const entry = await this.prisma.contentEntry.create({
       data: {
         contentTypeId: contentType.id,
@@ -53,8 +52,7 @@ export class ContentEntriesService {
     const existing = await this.prisma.contentEntry.findFirst({ where: { id, contentTypeId: contentType.id } });
     if (!existing) throw new NotFoundException('Entry not found');
     const data = this.normalizeData(contentType.fields, dto.data);
-    const slug = this.entrySlug(dto.slug, data);
-    await this.assertUniqueSlug(contentType.id, slug, existing.id);
+    const slug = await this.uniqueEntrySlug(contentType.id, this.entrySlug(dto.slug, data), existing.id);
 
     await this.updateDynamicRow(contentType.tableName, existing.dynamicRowId, existing.id, contentType.fields, data);
     return this.prisma.contentEntry.update({
@@ -121,17 +119,22 @@ export class ContentEntriesService {
     return slugify(title, { lower: true, strict: true, locale: 'pl', trim: true }) || undefined;
   }
 
-  private async assertUniqueSlug(contentTypeId: number, slug: string | undefined, excludeEntryId?: number) {
+  private async uniqueEntrySlug(contentTypeId: number, slug: string | undefined, excludeEntryId?: number) {
     if (!slug) return;
-    const existing = await this.prisma.contentEntry.findFirst({
+    const entries = await this.prisma.contentEntry.findMany({
       where: {
         contentTypeId,
-        slug,
+        OR: [{ slug }, { slug: { startsWith: `${slug}-` } }],
         ...(excludeEntryId ? { id: { not: excludeEntryId } } : {}),
       },
-      select: { id: true },
+      select: { slug: true },
     });
-    if (existing) throw new BadRequestException('Slug already exists for this content type');
+    const usedSlugs = new Set(entries.map((entry) => entry.slug).filter((value): value is string => Boolean(value)));
+    if (!usedSlugs.has(slug)) return slug;
+
+    let suffix = 1;
+    while (usedSlugs.has(`${slug}-${suffix}`)) suffix += 1;
+    return `${slug}-${suffix}`;
   }
 
   private async insertDynamicRow(tableName: string, entryId: number, fields: { key: string; type: string }[], data: Record<string, unknown>) {

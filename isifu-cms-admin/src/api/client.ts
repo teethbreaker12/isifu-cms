@@ -7,6 +7,52 @@ const REFRESH_KEY = 'cms_refresh_token';
 const USER_KEY = 'cms_user';
 const SESSION_KEYS = [ACCESS_KEY, REFRESH_KEY, USER_KEY] as const;
 
+type ApiErrorBody = {
+  statusCode?: number;
+  message?: string | string[];
+  error?: string;
+  method?: string;
+  path?: string;
+  timestamp?: string;
+  details?: {
+    name?: string;
+    message?: string;
+    stack?: string[];
+    cause?: unknown;
+    extra?: Record<string, unknown>;
+  };
+};
+
+function formatValue(value: unknown) {
+  if (value === undefined || value === null || value === '') return '';
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function formatApiError(error: ApiErrorBody, fallback: string) {
+  const message = Array.isArray(error.message) ? error.message.join('\n') : error.message || fallback;
+  const lines = [message];
+  const meta = [
+    error.statusCode ? `Status: ${error.statusCode}` : '',
+    error.error ? `Error: ${error.error}` : '',
+    error.method && error.path ? `Request: ${error.method} ${error.path}` : '',
+    error.timestamp ? `Time: ${error.timestamp}` : '',
+  ].filter(Boolean);
+
+  if (meta.length > 0) lines.push('', ...meta);
+  if (error.details?.name) lines.push(`Name: ${error.details.name}`);
+  if (error.details?.message && error.details.message !== message) lines.push(`Details: ${error.details.message}`);
+  if (error.details?.extra) lines.push('Extra:', formatValue(error.details.extra));
+  if (error.details?.cause) lines.push('Cause:', formatValue(error.details.cause));
+  if (error.details?.stack?.length) lines.push('Stack:', error.details.stack.join('\n'));
+
+  return lines.filter((line) => line !== '').join('\n');
+}
+
 function migrateLegacyLocalSession() {
   for (const key of SESSION_KEYS) {
     const value = localStorage.getItem(key);
@@ -97,7 +143,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         window.location.assign('/login');
       }
     }
-    throw new Error(error.message || 'Request failed');
+    throw new Error(formatApiError(error, response.statusText || 'Request failed'));
   }
   const data = await response.json();
   const method = (options.method ?? 'GET').toUpperCase();
