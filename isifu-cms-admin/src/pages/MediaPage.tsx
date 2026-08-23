@@ -45,15 +45,19 @@ export function MediaPage() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const isAdmin = getCurrentUser()?.role === 'ADMIN';
 
-  const load = () => Promise.all([api.media(), api.mediaFolders()])
-    .then(([nextAssets, nextFolders]) => {
-      setAssets(nextAssets);
-      setFolders(nextFolders);
-    })
-    .catch(() => {
+  const load = async () => {
+    try {
+      setAssets(await api.media());
+    } catch {
       setAssets([]);
+    }
+
+    try {
+      setFolders(await api.mediaFolders());
+    } catch {
       setFolders([]);
-    });
+    }
+  };
 
   useEffect(() => {
     void load();
