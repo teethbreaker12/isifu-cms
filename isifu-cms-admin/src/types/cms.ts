@@ -63,7 +63,15 @@ export type MediaAsset = {
   size: number;
   url: string;
   storage: string;
+  folderId?: number | null;
   createdAt: string;
+};
+
+export type MediaFolder = {
+  id: number;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type FormFieldType = 'text' | 'email' | 'phone' | 'date' | 'textarea' | 'select' | 'checkbox' | 'hidden';

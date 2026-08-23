@@ -1,21 +1,15 @@
 import { useEffect, useState } from 'react';
-import { CheckSquare, FileText, Folder, FolderInput, FolderPlus, Image as ImageIcon, Square, Trash2, Upload, X } from 'lucide-react';
-import { api, mediaUrl } from '../api/client';
+import { CheckSquare, FileText, Folder, FolderInput, FolderPlus, Image as ImageIcon, Pencil, Square, Trash2, Upload, X } from 'lucide-react';
+import { api, getCurrentUser, mediaUrl } from '../api/client';
 import { IconButton } from '../components/IconButton';
 import { Modal } from '../components/Modal';
 import { Panel } from '../components/Panel';
 import { SelectField } from '../components/SelectField';
 import { useToast } from '../components/Toast';
 import { t } from '../i18n';
-import type { MediaAsset } from '../types/cms';
+import type { MediaAsset, MediaFolder } from '../types/cms';
 
-const CATALOG_STORAGE_KEY = 'cms_media_catalogs';
 const UNCATEGORIZED = '__uncategorized__';
-
-type MediaCatalogState = {
-  folders: string[];
-  assignments: Record<string, string>;
-};
 
 function formatFileSize(size: number) {
   if (size < 1024) return `${size} B`;
@@ -31,53 +25,49 @@ function fileKind(asset: MediaAsset) {
   return t('media.kindFile');
 }
 
-function readCatalogState(): MediaCatalogState {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(CATALOG_STORAGE_KEY) || '{}') as Partial<MediaCatalogState>;
-    return {
-      folders: Array.isArray(parsed.folders) ? parsed.folders.filter(Boolean) : [],
-      assignments: parsed.assignments && typeof parsed.assignments === 'object' ? parsed.assignments : {},
-    };
-  } catch {
-    return { folders: [], assignments: {} };
-  }
-}
-
 export function MediaPage() {
   const { notify } = useToast();
   const [assets, setAssets] = useState<MediaAsset[]>([]);
+  const [folders, setFolders] = useState<MediaFolder[]>([]);
   const [url, setUrl] = useState('');
   const [preview, setPreview] = useState<MediaAsset | null>(null);
-  const [catalog, setCatalog] = useState<MediaCatalogState>(readCatalogState);
   const [newFolder, setNewFolder] = useState('');
   const [activeFolder, setActiveFolder] = useState('all');
   const [folderModalOpen, setFolderModalOpen] = useState(false);
+  const [editFolder, setEditFolder] = useState<MediaFolder | null>(null);
+  const [editFolderName, setEditFolderName] = useState('');
+  const [deleteFolder, setDeleteFolder] = useState<MediaFolder | null>(null);
   const [deleteAsset, setDeleteAsset] = useState<MediaAsset | null>(null);
   const [deleteSelectedOpen, setDeleteSelectedOpen] = useState(false);
   const [moveAsset, setMoveAsset] = useState<MediaAsset | null>(null);
   const [moveSelectedOpen, setMoveSelectedOpen] = useState(false);
   const [moveFolder, setMoveFolder] = useState(UNCATEGORIZED);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const isAdmin = getCurrentUser()?.role === 'ADMIN';
 
-  const load = () => api.media().then(setAssets).catch(() => setAssets([]));
+  const load = () => Promise.all([api.media(), api.mediaFolders()])
+    .then(([nextAssets, nextFolders]) => {
+      setAssets(nextAssets);
+      setFolders(nextFolders);
+    })
+    .catch(() => {
+      setAssets([]);
+      setFolders([]);
+    });
 
   useEffect(() => {
     void load();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(catalog));
-  }, [catalog]);
-
   const folderCounts = assets.reduce<Record<string, number>>((counts, asset) => {
-    const folder = catalog.assignments[String(asset.id)] || UNCATEGORIZED;
+    const folder = asset.folderId ? String(asset.folderId) : UNCATEGORIZED;
     counts[folder] = (counts[folder] || 0) + 1;
     return counts;
   }, {});
 
   const visibleAssets = assets.filter((asset) => {
     if (activeFolder === 'all') return true;
-    const folder = catalog.assignments[String(asset.id)] || UNCATEGORIZED;
+    const folder = asset.folderId ? String(asset.folderId) : UNCATEGORIZED;
     return folder === activeFolder;
   });
   const selectedAssets = assets.filter((asset) => selectedIds.includes(asset.id));
@@ -87,7 +77,8 @@ export function MediaPage() {
   async function upload(file?: File) {
     if (!file) return;
     try {
-      const asset = await api.upload(file);
+      const folderId = activeFolder !== 'all' && activeFolder !== UNCATEGORIZED ? Number(activeFolder) : null;
+      const asset = await api.upload(file, folderId);
       setUrl(asset.url);
       await load();
       notify(t('media.uploaded'));
@@ -110,11 +101,6 @@ export function MediaPage() {
   async function removeSelected() {
     try {
       await Promise.all(selectedAssets.map((asset) => api.deleteMedia(asset.id)));
-      setCatalog((current) => {
-        const assignments = { ...current.assignments };
-        for (const asset of selectedAssets) delete assignments[String(asset.id)];
-        return { ...current, assignments };
-      });
       setSelectedIds([]);
       setDeleteSelectedOpen(false);
       await load();
@@ -124,47 +110,71 @@ export function MediaPage() {
     }
   }
 
-  function createFolder(event: React.FormEvent) {
+  async function createFolder(event: React.FormEvent) {
     event.preventDefault();
     const folder = newFolder.trim();
-    if (!folder || catalog.folders.includes(folder)) return;
-    setCatalog((current) => ({
-      ...current,
-      folders: [...current.folders, folder].sort((a, b) => a.localeCompare(b)),
-    }));
-    setActiveFolder(folder);
-    setNewFolder('');
-    setFolderModalOpen(false);
-    notify(t('media.folderCreated'));
+    if (!folder) return;
+    try {
+      const created = await api.createMediaFolder({ name: folder });
+      setActiveFolder(String(created.id));
+      setNewFolder('');
+      setFolderModalOpen(false);
+      await load();
+      notify(t('media.folderCreated'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'Folder create failed', 'error');
+    }
   }
 
-  function assignFolder(assetId: number, folder: string) {
-    setCatalog((current) => {
-      const assignments = { ...current.assignments };
-      if (!folder || folder === UNCATEGORIZED) {
-        delete assignments[String(assetId)];
-      } else {
-        assignments[String(assetId)] = folder;
-      }
-      return { ...current, assignments };
-    });
-    notify(folder === UNCATEGORIZED ? t('media.folderCleared') : t('media.folderAssigned'));
+  async function updateFolder(event: React.FormEvent) {
+    event.preventDefault();
+    if (!editFolder) return;
+    const name = editFolderName.trim();
+    if (!name) return;
+    try {
+      await api.updateMediaFolder(editFolder.id, { name });
+      setEditFolder(null);
+      setEditFolderName('');
+      await load();
+      notify(t('media.folderUpdated'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'Folder update failed', 'error');
+    }
   }
 
-  function assignSelectedFolder(folder: string) {
-    setCatalog((current) => {
-      const assignments = { ...current.assignments };
-      for (const id of selectedIds) {
-        if (!folder || folder === UNCATEGORIZED) {
-          delete assignments[String(id)];
-        } else {
-          assignments[String(id)] = folder;
-        }
-      }
-      return { ...current, assignments };
-    });
-    setMoveSelectedOpen(false);
-    notify(folder === UNCATEGORIZED ? t('media.bulkFolderCleared') : t('media.bulkFolderAssigned'));
+  async function removeFolder() {
+    if (!deleteFolder) return;
+    try {
+      await api.deleteMediaFolder(deleteFolder.id);
+      if (activeFolder === String(deleteFolder.id)) setActiveFolder('all');
+      setDeleteFolder(null);
+      await load();
+      notify(t('media.folderDeleted'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'Folder delete failed', 'error');
+    }
+  }
+
+  async function assignFolder(assetId: number, folder: string) {
+    try {
+      await api.updateMediaAssetFolder(assetId, folder === UNCATEGORIZED ? null : Number(folder));
+      await load();
+      notify(folder === UNCATEGORIZED ? t('media.folderCleared') : t('media.folderAssigned'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'Folder assignment failed', 'error');
+    }
+  }
+
+  async function assignSelectedFolder(folder: string) {
+    try {
+      const folderId = folder === UNCATEGORIZED ? null : Number(folder);
+      await Promise.all(selectedIds.map((id) => api.updateMediaAssetFolder(id, folderId)));
+      setMoveSelectedOpen(false);
+      await load();
+      notify(folder === UNCATEGORIZED ? t('media.bulkFolderCleared') : t('media.bulkFolderAssigned'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'Folder assignment failed', 'error');
+    }
   }
 
   function toggleSelected(id: number) {
@@ -185,14 +195,19 @@ export function MediaPage() {
 
   function openMoveModal(asset: MediaAsset) {
     setMoveAsset(asset);
-    setMoveFolder(catalog.assignments[String(asset.id)] || UNCATEGORIZED);
+    setMoveFolder(asset.folderId ? String(asset.folderId) : UNCATEGORIZED);
   }
 
   function moveToFolder(event: React.FormEvent) {
     event.preventDefault();
     if (!moveAsset) return;
-    assignFolder(moveAsset.id, moveFolder);
+    void assignFolder(moveAsset.id, moveFolder);
     setMoveAsset(null);
+  }
+
+  function openEditFolder(folder: MediaFolder) {
+    setEditFolder(folder);
+    setEditFolderName(folder.name);
   }
 
   return (
@@ -207,37 +222,40 @@ export function MediaPage() {
         {url && <p className="mt-4 break-all rounded-md bg-stone-100 px-3 py-2 text-sm text-stone-700">{url}</p>}
       </Panel>
       <Panel title={t('media.gallery')}>
-        {assets.length === 0 ? (
-          <p className="text-sm text-stone-500">{t('media.empty')}</p>
-        ) : (
-          <div className="grid gap-4">
+        <div className="grid gap-4">
             <div className="grid gap-3 border-b border-stone-200 pb-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
               <div className="flex flex-wrap gap-2">
                 {[
-                  { key: 'all', label: t('media.all'), count: assets.length },
-                  { key: UNCATEGORIZED, label: t('media.uncategorized'), count: folderCounts[UNCATEGORIZED] || 0 },
-                  ...catalog.folders.map((folder) => ({ key: folder, label: folder, count: folderCounts[folder] || 0 })),
+                  { key: 'all', label: t('media.all'), count: assets.length, folder: null },
+                  { key: UNCATEGORIZED, label: t('media.uncategorized'), count: folderCounts[UNCATEGORIZED] || 0, folder: null },
+                  ...folders.map((folder) => ({ key: String(folder.id), label: folder.name, count: folderCounts[String(folder.id)] || 0, folder })),
                 ].map((folder) => (
-                  <button
+                  <div
                     key={folder.key}
-                    type="button"
                     className={`inline-flex min-h-9 items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium ${
                       activeFolder === folder.key ? 'accent-soft' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'
                     }`}
-                    onClick={() => setActiveFolder(folder.key)}
                   >
-                    <Folder size={15} />
-                    <span className="max-w-36 truncate">{folder.label}</span>
-                    <span className="metric-value text-xs opacity-70">{folder.count}</span>
-                  </button>
+                    <button type="button" className="inline-flex min-w-0 flex-1 items-center gap-2" onClick={() => setActiveFolder(folder.key)}>
+                      <Folder size={15} />
+                      <span className="max-w-36 truncate">{folder.label}</span>
+                      <span className="metric-value text-xs opacity-70">{folder.count}</span>
+                    </button>
+                    {isAdmin && folder.folder && (
+                      <span className="inline-flex shrink-0 gap-1">
+                        <IconButton label={t('media.editFolder')} icon={<Pencil size={14} />} onClick={() => openEditFolder(folder.folder)} />
+                        <IconButton label={t('media.deleteFolder')} icon={<Trash2 size={14} />} tone="danger" onClick={() => setDeleteFolder(folder.folder)} />
+                      </span>
+                    )}
+                  </div>
                 ))}
               </div>
-              <div className="flex justify-end">
+              {isAdmin && <div className="flex justify-end">
                 <button type="button" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700" onClick={() => setFolderModalOpen(true)}>
                   <FolderPlus size={17} />
                   {t('media.addFolder')}
                 </button>
-              </div>
+              </div>}
             </div>
 
             <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-stone-50/70 p-3 lg:flex-row lg:items-center lg:justify-between">
@@ -285,13 +303,12 @@ export function MediaPage() {
             </div>
 
             {visibleAssets.length === 0 ? (
-              <p className="text-sm text-stone-500">{t('media.folderEmpty')}</p>
+              <p className="text-sm text-stone-500">{assets.length === 0 ? t('media.empty') : t('media.folderEmpty')}</p>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {visibleAssets.map((asset) => {
                   const isImage = asset.mimeType.startsWith('image/');
-                  const assignedFolder = catalog.assignments[String(asset.id)] || UNCATEGORIZED;
-                  const assignedLabel = assignedFolder === UNCATEGORIZED ? t('media.uncategorized') : assignedFolder;
+                  const assignedLabel = folders.find((folder) => folder.id === asset.folderId)?.name || t('media.uncategorized');
                   const selected = selectedIds.includes(asset.id);
                   return (
                     <div key={asset.id} className={`media-card ${selected ? 'media-card--selected' : ''}`}>
@@ -346,7 +363,6 @@ export function MediaPage() {
               </div>
             )}
           </div>
-        )}
       </Panel>
       {preview && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={() => setPreview(null)}>
@@ -400,6 +416,50 @@ export function MediaPage() {
           </form>
         </Modal>
       )}
+      {editFolder && (
+        <Modal
+          title={t('media.editFolder')}
+          description={editFolder.name}
+          onClose={() => setEditFolder(null)}
+        >
+          <form className="grid gap-4" onSubmit={updateFolder}>
+            <input
+              className="rounded-md border border-stone-300 px-3 py-2 text-sm"
+              value={editFolderName}
+              onChange={(event) => setEditFolderName(event.target.value)}
+              placeholder={t('media.folderPlaceholder')}
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button type="button" className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700" onClick={() => setEditFolder(null)}>
+                {t('common.cancel')}
+              </button>
+              <button className="accent-bg rounded-md px-3 py-2 text-sm font-semibold">
+                {t('common.save')}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {deleteFolder && (
+        <Modal
+          title={t('media.deleteFolder')}
+          description={deleteFolder.name}
+          onClose={() => setDeleteFolder(null)}
+          footer={
+            <>
+              <button type="button" className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700" onClick={() => setDeleteFolder(null)}>
+                {t('common.cancel')}
+              </button>
+              <button type="button" className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" onClick={() => void removeFolder()}>
+                {t('common.delete')}
+              </button>
+            </>
+          }
+        >
+          <p className="text-sm leading-6 text-stone-600">{t('media.deleteFolderConfirm')}</p>
+        </Modal>
+      )}
       {deleteAsset && (
         <Modal
           title={t('media.deleteTitle')}
@@ -450,7 +510,7 @@ export function MediaPage() {
               value={moveFolder}
               options={[
                 { value: UNCATEGORIZED, label: t('media.uncategorized') },
-                ...catalog.folders.map((folder) => ({ value: folder, label: folder })),
+                ...folders.map((folder) => ({ value: String(folder.id), label: folder.name })),
               ]}
               onChange={setMoveFolder}
               autoFocus
@@ -484,7 +544,7 @@ export function MediaPage() {
               value={moveFolder}
               options={[
                 { value: UNCATEGORIZED, label: t('media.uncategorized') },
-                ...catalog.folders.map((folder) => ({ value: folder, label: folder })),
+                ...folders.map((folder) => ({ value: String(folder.id), label: folder.name })),
               ]}
               onChange={setMoveFolder}
               autoFocus

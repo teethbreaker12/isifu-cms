@@ -90,7 +90,19 @@ model MediaAsset {
   size         Int
   url          String
   storage      String   @default("local")
+  folderId     Int?
+  folder       MediaFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
+
+  @@index([folderId])
+}
+
+model MediaFolder {
+  id        Int          @id @default(autoincrement())
+  name      String       @unique
+  assets    MediaAsset[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 }
 
 model Form {

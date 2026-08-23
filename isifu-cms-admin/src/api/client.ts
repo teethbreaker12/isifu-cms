@@ -1,4 +1,4 @@
-import type { ContactForm, ContentEntry, ContentType, FormSubmission, MediaAsset, Page, User } from '../types/cms';
+import type { ContactForm, ContentEntry, ContentType, FormSubmission, MediaAsset, MediaFolder, Page, User } from '../types/cms';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const API_ORIGIN = API_URL.replace(/\/api\/?$/, '');
@@ -194,10 +194,19 @@ export const api = {
   disableUserTwoFactor: (id: number) => request<User>(`/users/${id}/2fa/disable`, { method: 'POST' }),
   media: () => request<MediaAsset[]>('/media'),
   deleteMedia: (id: number) => request<MediaAsset>(`/media/${id}`, { method: 'DELETE' }),
-  upload: (file: File) => {
+  mediaFolders: () => request<MediaFolder[]>('/media/folders'),
+  createMediaFolder: (body: { name: string }) =>
+    request<MediaFolder>('/media/folders', { method: 'POST', body: JSON.stringify(body) }),
+  updateMediaFolder: (id: number, body: { name: string }) =>
+    request<MediaFolder>(`/media/folders/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteMediaFolder: (id: number) => request<MediaFolder>(`/media/folders/${id}`, { method: 'DELETE' }),
+  updateMediaAssetFolder: (id: number, folderId: number | null) =>
+    request<MediaAsset>(`/media/${id}/folder`, { method: 'PATCH', body: JSON.stringify({ folderId }) }),
+  upload: (file: File, folderId?: number | null) => {
     const formData = new FormData();
     formData.append('file', file);
-    return request<{ url: string }>('/media/upload', { method: 'POST', body: formData });
+    if (folderId) formData.append('folderId', String(folderId));
+    return request<MediaAsset>('/media/upload', { method: 'POST', body: formData });
   },
   forms: () => request<ContactForm[]>('/forms'),
   createForm: (body: Partial<ContactForm>) => request<ContactForm>('/forms', { method: 'POST', body: JSON.stringify(body) }),
