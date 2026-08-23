@@ -56,7 +56,9 @@ else
 fi
 
 log "Preparing database"
+run rm -rf isifu-cms-backend/node_modules/.prisma/client
 run npm run db:generate
+run node -e 'const { PrismaClient } = require("./isifu-cms-backend/node_modules/@prisma/client"); const prisma = new PrismaClient(); if (!prisma.mediaFolder || typeof prisma.mediaFolder.create !== "function") { throw new Error("Generated Prisma Client does not include MediaFolder. Check prisma generate output."); } prisma.$disconnect();'
 run npm run db:deploy
 
 log "Building applications"

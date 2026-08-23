@@ -7,7 +7,7 @@ import { extname } from 'node:path';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { Roles } from '../common/roles.decorator';
 import { RolesGuard } from '../common/roles.guard';
-import { CreateMediaFolderDto, UpdateMediaAssetFolderDto, UpdateMediaFolderDto, UploadMediaDto } from './dto';
+import { CreateMediaFolderDto, UpdateMediaAssetDto, UpdateMediaAssetFolderDto, UpdateMediaFolderDto, UploadMediaDto } from './dto';
 import { MediaService } from './media.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -72,6 +72,12 @@ export class MediaController {
   @Roles(Role.ADMIN, Role.EDITOR)
   updateFolder(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateMediaAssetFolderDto) {
     return this.media.updateFolder(id, dto);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.EDITOR)
+  updateAsset(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateMediaAssetDto) {
+    return this.media.updateAsset(id, dto);
   }
 
   @Delete(':id')

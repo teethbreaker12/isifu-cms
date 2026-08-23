@@ -19,6 +19,12 @@ export class UpdateMediaAssetFolderDto {
   folderId?: number | null;
 }
 
+export class UpdateMediaAssetDto {
+  @IsOptional()
+  @IsString()
+  displayName?: string;
+}
+
 export class UploadMediaDto {
   @IsOptional()
   @Type(() => Number)

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ShieldCheck, ShieldOff } from 'lucide-react';
+import { MailCheck, Send, ShieldCheck, ShieldOff } from 'lucide-react';
 import { api, getCurrentUser, setCurrentUser } from '../api/client';
 import { isAdmin } from '../auth';
 import { Modal } from '../components/Modal';
@@ -7,7 +7,7 @@ import { Panel } from '../components/Panel';
 import { useToast } from '../components/Toast';
 import { t } from '../i18n';
 import { useTheme, type Accent } from '../theme';
-import type { User } from '../types/cms';
+import type { SmtpSettings, User } from '../types/cms';
 
 const accentOptions: Array<{ value: Accent; color: string }> = [
   { value: 'blue', color: '#2563eb' },
@@ -17,6 +17,17 @@ const accentOptions: Array<{ value: Accent; color: string }> = [
   { value: 'rose', color: '#be123c' },
   { value: 'slate', color: '#475569' },
 ];
+
+const emptySmtpSettings: SmtpSettings = {
+  enabled: false,
+  host: '',
+  port: 587,
+  secure: false,
+  user: '',
+  pass: '',
+  fromName: '',
+  fromEmail: '',
+};
 
 export function SettingsPage() {
   const { notify } = useToast();
@@ -29,6 +40,9 @@ export function SettingsPage() {
   const [setup, setSetup] = useState<{ secret: string; qrCode: string; otpauth: string } | null>(null);
   const [totpCode, setTotpCode] = useState('');
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [smtp, setSmtp] = useState<SmtpSettings & { hasPassword?: boolean; source?: 'database' | 'env' }>(emptySmtpSettings);
+  const [testRecipient, setTestRecipient] = useState('');
+  const [smtpBusy, setSmtpBusy] = useState(false);
 
   async function refreshCurrentUser() {
     const freshUser = await api.me();
@@ -39,6 +53,16 @@ export function SettingsPage() {
   useEffect(() => {
     void refreshCurrentUser().catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (!admin) return;
+    api.smtpSettings()
+      .then((settings) => {
+        setSmtp({ ...settings, pass: '' });
+        setTestRecipient(settings.fromEmail || settings.user || '');
+      })
+      .catch((caught) => notify(caught instanceof Error ? caught.message : 'Could not load SMTP settings', 'error'));
+  }, [admin, notify]);
 
   async function changePassword(event: React.FormEvent) {
     event.preventDefault();
@@ -88,6 +112,36 @@ export function SettingsPage() {
     setTotpCode('');
     await refreshCurrentUser();
     notify(t('settings.twoFactorDisabled'));
+  }
+
+  function updateSmtp(patch: Partial<SmtpSettings>) {
+    setSmtp((current) => ({ ...current, ...patch }));
+  }
+
+  async function saveSmtp(event: React.FormEvent) {
+    event.preventDefault();
+    setSmtpBusy(true);
+    try {
+      const saved = await api.updateSmtpSettings(smtp);
+      setSmtp({ ...saved, pass: '' });
+      notify(t('settings.smtpSaved'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'Could not save SMTP settings', 'error');
+    } finally {
+      setSmtpBusy(false);
+    }
+  }
+
+  async function testSmtp() {
+    setSmtpBusy(true);
+    try {
+      await api.testSmtpSettings({ ...smtp, testRecipient });
+      notify(t('settings.smtpTestSent'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'SMTP test failed', 'error');
+    } finally {
+      setSmtpBusy(false);
+    }
   }
 
   return (
@@ -168,6 +222,73 @@ export function SettingsPage() {
             )}
           </div>
         </Panel>
+
+        {admin && (
+          <Panel title={t('settings.smtp')}>
+            <form className="grid gap-4" onSubmit={saveSmtp}>
+              <div>
+                <p className="text-sm leading-6 text-stone-600">{t('settings.smtpHelp')}</p>
+                {smtp.source && (
+                  <p className="mt-1 text-xs leading-5 text-stone-500">
+                    {t('settings.smtpSource')}: {smtp.source === 'database' ? t('settings.smtpSourceDatabase') : t('settings.smtpSourceEnv')}
+                  </p>
+                )}
+              </div>
+              <label className="flex items-center gap-2 text-sm font-medium text-stone-700">
+                <input type="checkbox" checked={smtp.enabled} onChange={(event) => updateSmtp({ enabled: event.target.checked })} />
+                {t('settings.smtpEnabled')}
+              </label>
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_8rem_9rem]">
+                <label className="grid gap-1 text-sm font-medium text-stone-700">
+                  <span>{t('settings.smtpHost')}</span>
+                  <input className="rounded-md border border-stone-300 px-3 py-2 font-normal" value={smtp.host} onChange={(event) => updateSmtp({ host: event.target.value })} placeholder="smtp.domain.com" />
+                </label>
+                <label className="grid gap-1 text-sm font-medium text-stone-700">
+                  <span>{t('settings.smtpPort')}</span>
+                  <input className="rounded-md border border-stone-300 px-3 py-2 font-normal" type="number" min={1} max={65535} value={smtp.port} onChange={(event) => updateSmtp({ port: Number(event.target.value) })} />
+                </label>
+                <label className="flex items-end gap-2 pb-2 text-sm font-medium text-stone-700">
+                  <input type="checkbox" checked={smtp.secure} onChange={(event) => updateSmtp({ secure: event.target.checked })} />
+                  {t('settings.smtpSecure')}
+                </label>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-2">
+                <label className="grid gap-1 text-sm font-medium text-stone-700">
+                  <span>{t('settings.smtpUser')}</span>
+                  <input className="rounded-md border border-stone-300 px-3 py-2 font-normal" value={smtp.user} onChange={(event) => updateSmtp({ user: event.target.value })} placeholder="cms@domain.com" />
+                </label>
+                <label className="grid gap-1 text-sm font-medium text-stone-700">
+                  <span>{t('settings.smtpPass')}</span>
+                  <input className="rounded-md border border-stone-300 px-3 py-2 font-normal" type="password" value={smtp.pass || ''} onChange={(event) => updateSmtp({ pass: event.target.value })} placeholder={smtp.hasPassword ? t('settings.smtpPassKeep') : t('settings.smtpPass')} />
+                </label>
+                <label className="grid gap-1 text-sm font-medium text-stone-700">
+                  <span>{t('settings.smtpFromName')}</span>
+                  <input className="rounded-md border border-stone-300 px-3 py-2 font-normal" value={smtp.fromName} onChange={(event) => updateSmtp({ fromName: event.target.value })} placeholder="ISIFU CMS" />
+                </label>
+                <label className="grid gap-1 text-sm font-medium text-stone-700">
+                  <span>{t('settings.smtpFromEmail')}</span>
+                  <input className="rounded-md border border-stone-300 px-3 py-2 font-normal" type="email" value={smtp.fromEmail} onChange={(event) => updateSmtp({ fromEmail: event.target.value })} placeholder="cms@domain.com" />
+                </label>
+              </div>
+              <div className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50/70 p-3">
+                <label className="grid gap-1 text-sm font-medium text-stone-700">
+                  <span>{t('settings.smtpTestRecipient')}</span>
+                  <input className="rounded-md border border-stone-300 bg-white px-3 py-2 font-normal" type="email" value={testRecipient} onChange={(event) => setTestRecipient(event.target.value)} placeholder="admin@domain.com" />
+                </label>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <button type="button" disabled={smtpBusy || !testRecipient} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 disabled:opacity-50 sm:w-fit" onClick={testSmtp}>
+                    <Send size={16} />
+                    {t('settings.smtpTest')}
+                  </button>
+                  <button disabled={smtpBusy} className="accent-bg inline-flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold disabled:opacity-50 sm:w-fit">
+                    <MailCheck size={16} />
+                    {t('common.save')}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </Panel>
+        )}
       </div>
       {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{error}</div>}
       {passwordModalOpen && (

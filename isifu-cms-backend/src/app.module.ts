@@ -10,6 +10,7 @@ import { PagesModule } from './pages/pages.module';
 import { MediaModule } from './media/media.module';
 import { StatsModule } from './stats/stats.module';
 import { FormsModule } from './forms/forms.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { FormsModule } from './forms/forms.module';
     PagesModule,
     MediaModule,
     FormsModule,
+    SettingsModule,
     StatsModule,
   ],
 })

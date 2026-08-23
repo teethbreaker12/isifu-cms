@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateMediaFolderDto, UpdateMediaAssetFolderDto, UpdateMediaFolderDto, UploadMediaDto } from './dto';
+import { CreateMediaFolderDto, UpdateMediaAssetDto, UpdateMediaAssetFolderDto, UpdateMediaFolderDto, UploadMediaDto } from './dto';
 
 @Injectable()
 export class MediaService {
@@ -27,6 +27,7 @@ export class MediaService {
       data: {
         filename: file.filename,
         originalName: file.originalname,
+        displayName: file.originalname,
         mimeType: file.mimetype,
         size: file.size,
         url: `/${apiPrefix}/uploads/${file.filename}`,
@@ -40,6 +41,13 @@ export class MediaService {
     return this.prisma.mediaAsset.update({
       where: { id },
       data: { folderId: dto.folderId ?? null },
+    });
+  }
+
+  updateAsset(id: number, dto: UpdateMediaAssetDto) {
+    return this.prisma.mediaAsset.update({
+      where: { id },
+      data: { displayName: dto.displayName?.trim() || null },
     });
   }
 

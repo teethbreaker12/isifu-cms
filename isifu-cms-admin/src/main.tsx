@@ -6,7 +6,7 @@ import { ToastProvider } from './components/Toast';
 import { ThemeProvider } from './theme';
 import './styles.css';
 
-const slug = import.meta.env.VITE_ADMIN_SLUG || 'admin';
+const slug = (import.meta.env.VITE_ADMIN_SLUG || 'admin').replace(/^\/+|\/+$/g, '');
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,7 +1,8 @@
-import type { ContactForm, ContentEntry, ContentType, FormSubmission, MediaAsset, MediaFolder, Page, User } from '../types/cms';
+import type { ContactForm, ContentEntry, ContentType, FormSubmission, MediaAsset, MediaFolder, Page, SmtpSettings, User } from '../types/cms';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const API_ORIGIN = API_URL.replace(/\/api\/?$/, '');
+const ADMIN_SLUG = (import.meta.env.VITE_ADMIN_SLUG || 'admin').replace(/^\/+|\/+$/g, '');
 const ACCESS_KEY = 'cms_access_token';
 const REFRESH_KEY = 'cms_refresh_token';
 const USER_KEY = 'cms_user';
@@ -123,6 +124,11 @@ export function mediaUrl(url: string) {
   return `${API_ORIGIN}${url.startsWith('/') ? url : `/${url}`}`;
 }
 
+export function adminPath(path = '/') {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `/${ADMIN_SLUG}${normalizedPath}`;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   if (!(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
@@ -139,8 +145,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const error = await response.json().catch(() => ({ message: response.statusText }));
     if (response.status === 401 && token && error.message === 'Unauthorized') {
       clearTokens();
-      if (window.location.pathname !== '/login') {
-        window.location.assign('/login');
+      const loginPath = adminPath('/login');
+      if (window.location.pathname !== loginPath) {
+        window.location.assign(loginPath);
       }
     }
     throw new Error(formatApiError(error, response.statusText || 'Request failed'));
@@ -168,6 +175,11 @@ export const api = {
   statsOverview: () => request<{ models?: number; entries: number; pages: number; media: number; forms?: number; users?: number }>('/stats/overview'),
   changePassword: (body: { currentPassword: string; newPassword: string }) =>
     request<{ ok: true }>('/auth/password', { method: 'POST', body: JSON.stringify(body) }),
+  smtpSettings: () => request<SmtpSettings & { hasPassword: boolean; source: 'database' | 'env' }>('/settings/smtp'),
+  updateSmtpSettings: (body: SmtpSettings) =>
+    request<SmtpSettings & { hasPassword: boolean; source: 'database' | 'env' }>('/settings/smtp', { method: 'PUT', body: JSON.stringify(body) }),
+  testSmtpSettings: (body: SmtpSettings & { testRecipient: string }) =>
+    request<{ ok: true }>('/settings/smtp/test', { method: 'POST', body: JSON.stringify(body) }),
   contentTypes: () => request<ContentType[]>('/content-types'),
   createContentType: (body: Partial<ContentType>) =>
     request<ContentType>('/content-types', { method: 'POST', body: JSON.stringify(body) }),
@@ -193,6 +205,8 @@ export const api = {
   deleteUser: (id: number) => request<{ id: number }>(`/users/${id}`, { method: 'DELETE' }),
   disableUserTwoFactor: (id: number) => request<User>(`/users/${id}/2fa/disable`, { method: 'POST' }),
   media: () => request<MediaAsset[]>('/media'),
+  updateMedia: (id: number, body: Partial<Pick<MediaAsset, 'displayName'>>) =>
+    request<MediaAsset>(`/media/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   deleteMedia: (id: number) => request<MediaAsset>(`/media/${id}`, { method: 'DELETE' }),
   mediaFolders: () => request<MediaFolder[]>('/media/folders'),
   createMediaFolder: (body: { name: string }) =>

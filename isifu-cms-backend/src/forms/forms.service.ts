@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { SmtpSettingsService } from '../settings/smtp-settings.service';
 import { FormFieldDto, SubmitFormDto, UpsertFormDto } from './dto';
 
 type FormRow = {
@@ -46,7 +46,7 @@ type FormWithFields = ReturnType<FormsService['normalizeForm']>;
 export class FormsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly config: ConfigService,
+    private readonly smtp: SmtpSettingsService,
   ) {}
 
   async findAll() {
@@ -326,35 +326,11 @@ export class FormsService {
   }
 
   private async sendMail(message: { to: string; subject: string; text: string; html: string }) {
-    const host = this.config.get<string>('SMTP_HOST');
-    if (!host) return false;
-    const port = this.config.get<number>('SMTP_PORT', 587);
-    const user = this.config.get<string>('SMTP_USER');
-    const pass = this.config.get<string>('SMTP_PASS');
-    const secure = this.config.get<string>('SMTP_SECURE', 'false') === 'true';
-    const from = this.config.get<string>('SMTP_FROM') || user || 'cms@example.com';
-    const nodemailer = this.loadMailer();
-    if (!nodemailer) return false;
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth: user && pass ? { user, pass } : undefined,
-    });
     try {
-      await transporter.sendMail({ from, ...message });
+      await this.smtp.sendMail(await this.smtp.getConfig(), message);
       return true;
     } catch {
       return false;
-    }
-  }
-
-  private loadMailer(): { createTransport: (options: Record<string, unknown>) => { sendMail: (message: Record<string, unknown>) => Promise<unknown> } } | null {
-    try {
-      const load = new Function('moduleName', 'return require(moduleName)') as (moduleName: string) => unknown;
-      return load('nodemailer') as { createTransport: (options: Record<string, unknown>) => { sendMail: (message: Record<string, unknown>) => Promise<unknown> } };
-    } catch {
-      return null;
     }
   }
 

@@ -25,11 +25,17 @@ function fileKind(asset: MediaAsset) {
   return t('media.kindFile');
 }
 
+function mediaLabel(asset: MediaAsset) {
+  return asset.displayName?.trim() || asset.originalName;
+}
+
 export function MediaPage() {
   const { notify } = useToast();
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [folders, setFolders] = useState<MediaFolder[]>([]);
   const [url, setUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
   const [preview, setPreview] = useState<MediaAsset | null>(null);
   const [newFolder, setNewFolder] = useState('');
   const [activeFolder, setActiveFolder] = useState('all');
@@ -37,6 +43,8 @@ export function MediaPage() {
   const [editFolder, setEditFolder] = useState<MediaFolder | null>(null);
   const [editFolderName, setEditFolderName] = useState('');
   const [deleteFolder, setDeleteFolder] = useState<MediaFolder | null>(null);
+  const [editAsset, setEditAsset] = useState<MediaAsset | null>(null);
+  const [editAssetName, setEditAssetName] = useState('');
   const [deleteAsset, setDeleteAsset] = useState<MediaAsset | null>(null);
   const [deleteSelectedOpen, setDeleteSelectedOpen] = useState(false);
   const [moveAsset, setMoveAsset] = useState<MediaAsset | null>(null);
@@ -78,16 +86,26 @@ export function MediaPage() {
   const visibleSelectedCount = visibleAssets.filter((asset) => selectedIds.includes(asset.id)).length;
   const allVisibleSelected = visibleAssets.length > 0 && visibleSelectedCount === visibleAssets.length;
 
-  async function upload(file?: File) {
-    if (!file) return;
+  async function upload(files?: FileList | File[]) {
+    const selectedFiles = Array.from(files || []);
+    if (selectedFiles.length === 0 || uploading) return;
+    setUploading(true);
+    setUploadProgress(t('media.uploadProgress').replace('{done}', '0').replace('{total}', String(selectedFiles.length)));
     try {
       const folderId = activeFolder !== 'all' && activeFolder !== UNCATEGORIZED ? Number(activeFolder) : null;
-      const asset = await api.upload(file, folderId);
-      setUrl(asset.url);
+      let lastAsset: MediaAsset | null = null;
+      for (const [index, file] of selectedFiles.entries()) {
+        lastAsset = await api.upload(file, folderId);
+        setUploadProgress(t('media.uploadProgress').replace('{done}', String(index + 1)).replace('{total}', String(selectedFiles.length)));
+      }
+      if (lastAsset) setUrl(lastAsset.url);
       await load();
-      notify(t('media.uploaded'));
+      notify(selectedFiles.length === 1 ? t('media.uploaded') : t('media.bulkUploaded').replace('{count}', String(selectedFiles.length)));
     } catch (caught) {
       notify(caught instanceof Error ? caught.message : 'Upload failed', 'error');
+    } finally {
+      setUploading(false);
+      setUploadProgress('');
     }
   }
 
@@ -99,6 +117,20 @@ export function MediaPage() {
       notify(t('media.deleted'));
     } catch (caught) {
       notify(caught instanceof Error ? caught.message : 'Delete failed', 'error');
+    }
+  }
+
+  async function updateAssetName(event: React.FormEvent) {
+    event.preventDefault();
+    if (!editAsset) return;
+    try {
+      await api.updateMedia(editAsset.id, { displayName: editAssetName });
+      setEditAsset(null);
+      setEditAssetName('');
+      await load();
+      notify(t('media.nameUpdated'));
+    } catch (caught) {
+      notify(caught instanceof Error ? caught.message : 'Media update failed', 'error');
     }
   }
 
@@ -214,15 +246,30 @@ export function MediaPage() {
     setEditFolderName(folder.name);
   }
 
+  function openEditAsset(asset: MediaAsset) {
+    setEditAsset(asset);
+    setEditAssetName(mediaLabel(asset));
+  }
+
   return (
     <div className="grid gap-5">
       <h1 className="page-title">{t('nav.media')}</h1>
       <Panel title={t('media.upload')}>
-        <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white sm:w-fit">
+        <label className={`flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white sm:w-fit ${uploading ? 'cursor-not-allowed bg-stone-500' : 'cursor-pointer bg-stone-950'}`}>
           <Upload size={16} />
-          {t('media.upload')}
-          <input type="file" className="hidden" onChange={(event) => upload(event.target.files?.[0])} />
+          {uploading ? t('media.uploading') : t('media.upload')}
+          <input
+            type="file"
+            className="hidden"
+            multiple
+            disabled={uploading}
+            onChange={(event) => {
+              void upload(event.target.files || undefined);
+              event.currentTarget.value = '';
+            }}
+          />
         </label>
+        {uploadProgress && <p className="mt-3 text-sm text-stone-600">{uploadProgress}</p>}
         {url && <p className="mt-4 break-all rounded-md bg-stone-100 px-3 py-2 text-sm text-stone-700">{url}</p>}
       </Panel>
       <Panel title={t('media.gallery')}>
@@ -245,7 +292,7 @@ export function MediaPage() {
                       <span className="max-w-36 truncate">{folder.label}</span>
                       <span className="metric-value text-xs opacity-70">{folder.count}</span>
                     </button>
-                    {isAdmin && folder.folder && (
+                    {isAdmin && folder.folder && activeFolder === folder.key && (
                       <span className="inline-flex shrink-0 gap-1">
                         <IconButton label={t('media.editFolder')} icon={<Pencil size={14} />} onClick={() => openEditFolder(folder.folder)} />
                         <IconButton label={t('media.deleteFolder')} icon={<Trash2 size={14} />} tone="danger" onClick={() => setDeleteFolder(folder.folder)} />
@@ -312,6 +359,7 @@ export function MediaPage() {
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {visibleAssets.map((asset) => {
                   const isImage = asset.mimeType.startsWith('image/');
+                  const label = mediaLabel(asset);
                   const assignedLabel = folders.find((folder) => folder.id === asset.folderId)?.name || t('media.uncategorized');
                   const selected = selectedIds.includes(asset.id);
                   return (
@@ -329,14 +377,15 @@ export function MediaPage() {
                       <button type="button" className="media-card__preview focus-ring" onClick={() => setPreview(asset)}>
                         <div className="media-card__thumb">
                           {isImage ? (
-                            <img src={mediaUrl(asset.url)} alt={asset.originalName} className="h-full w-full object-cover" />
+                            <img src={mediaUrl(asset.url)} alt={label} className="h-full w-full object-cover" />
                           ) : (
                             <FileText className="text-stone-500" size={34} />
                           )}
                         </div>
                         <div className="media-card__meta">
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-stone-950" title={asset.originalName}>{asset.originalName}</div>
+                            <div className="truncate text-sm font-semibold text-stone-950" title={label}>{label}</div>
+                            {asset.displayName && asset.displayName !== asset.originalName && <div className="mt-1 truncate text-xs text-stone-500" title={asset.originalName}>{asset.originalName}</div>}
                             <div className="mt-1 truncate text-xs text-stone-500" title={asset.url}>{asset.url}</div>
                           </div>
                           <div className="media-card__details">
@@ -356,6 +405,7 @@ export function MediaPage() {
                             <span className="min-w-0 truncate">{assignedLabel}</span>
                           </div>
                           <div className="flex shrink-0 gap-2">
+                            <IconButton label={t('media.editName')} icon={<Pencil size={16} />} onClick={() => openEditAsset(asset)} />
                             <IconButton label={t('media.moveToFolder')} icon={<FolderInput size={16} />} onClick={() => openMoveModal(asset)} />
                             <IconButton label={t('common.delete')} icon={<Trash2 size={16} />} tone="danger" onClick={() => setDeleteAsset(asset)} />
                           </div>
@@ -373,7 +423,7 @@ export function MediaPage() {
           <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-lg border border-stone-200 bg-white shadow-xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
               <div className="min-w-0 pr-3">
-                <div className="truncate text-sm font-semibold text-stone-950">{preview.originalName}</div>
+                <div className="truncate text-sm font-semibold text-stone-950">{mediaLabel(preview)}</div>
                 <div className="text-xs text-stone-500">{fileKind(preview)} - {preview.mimeType} - {formatFileSize(preview.size)}</div>
               </div>
               <button type="button" className="rounded-md p-2 text-stone-600 hover:bg-stone-100 hover:text-stone-950" onClick={() => setPreview(null)}>
@@ -382,13 +432,13 @@ export function MediaPage() {
             </div>
             <div className="grid max-h-[75vh] place-items-center overflow-auto bg-stone-100 p-4">
               {preview.mimeType.startsWith('image/') ? (
-                <img src={mediaUrl(preview.url)} alt={preview.originalName} className="max-h-[70vh] max-w-full rounded object-contain" />
+                <img src={mediaUrl(preview.url)} alt={mediaLabel(preview)} className="max-h-[70vh] max-w-full rounded object-contain" />
               ) : preview.mimeType === 'application/pdf' ? (
-                <iframe src={mediaUrl(preview.url)} title={preview.originalName} className="h-[70vh] w-full rounded bg-white" />
+                <iframe src={mediaUrl(preview.url)} title={mediaLabel(preview)} className="h-[70vh] w-full rounded bg-white" />
               ) : (
                 <div className="grid gap-3 text-center text-stone-600">
                   <FileText className="mx-auto" size={44} />
-                  <div>{preview.originalName}</div>
+                  <div>{mediaLabel(preview)}</div>
                 </div>
               )}
             </div>
@@ -462,6 +512,35 @@ export function MediaPage() {
           }
         >
           <p className="text-sm leading-6 text-stone-600">{t('media.deleteFolderConfirm')}</p>
+        </Modal>
+      )}
+      {editAsset && (
+        <Modal
+          title={t('media.editName')}
+          description={editAsset.originalName}
+          onClose={() => setEditAsset(null)}
+        >
+          <form className="grid gap-4" onSubmit={updateAssetName}>
+            <label className="grid gap-1 text-sm font-medium text-stone-700">
+              <span>{t('media.displayName')}</span>
+              <input
+                className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+                value={editAssetName}
+                onChange={(event) => setEditAssetName(event.target.value)}
+                placeholder={t('media.displayNamePlaceholder')}
+                autoFocus
+              />
+            </label>
+            <p className="break-all rounded-md bg-stone-50 px-3 py-2 text-xs text-stone-500">{editAsset.url}</p>
+            <div className="flex justify-end gap-2">
+              <button type="button" className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700" onClick={() => setEditAsset(null)}>
+                {t('common.cancel')}
+              </button>
+              <button className="accent-bg rounded-md px-3 py-2 text-sm font-semibold">
+                {t('common.save')}
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
       {deleteAsset && (

@@ -86,6 +86,7 @@ model MediaAsset {
   id           Int      @id @default(autoincrement())
   filename     String
   originalName String
+  displayName  String?
   mimeType     String
   size         Int
   url          String
@@ -148,4 +149,18 @@ model FormSubmission {
   createdAt        DateTime @default(now())
 
   @@index([formId, createdAt])
+}
+
+model SmtpSettings {
+  id        Int      @id
+  enabled   Boolean  @default(false)
+  host      String?
+  port      Int      @default(587)
+  secure    Boolean  @default(false)
+  user      String?
+  pass      String?  @db.Text
+  fromName  String?
+  fromEmail String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

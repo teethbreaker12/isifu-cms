@@ -59,6 +59,7 @@ export type MediaAsset = {
   id: number;
   filename: string;
   originalName: string;
+  displayName?: string | null;
   mimeType: string;
   size: number;
   url: string;
@@ -109,4 +110,17 @@ export type FormSubmission = {
   notificationSent: boolean;
   responseSent: boolean;
   createdAt: string;
+};
+
+export type SmtpSettings = {
+  enabled: boolean;
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  pass?: string;
+  fromName: string;
+  fromEmail: string;
+  hasPassword?: boolean;
+  source?: 'database' | 'env';
 };
