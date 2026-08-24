@@ -1,9 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { unlink } from 'node:fs/promises';
-import { join } from 'node:path';
+import { stat, unlink } from 'node:fs/promises';
+import { join, parse } from 'node:path';
+import sharp from 'sharp';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMediaFolderDto, UpdateMediaAssetDto, UpdateMediaAssetFolderDto, UpdateMediaFolderDto, UploadMediaDto } from './dto';
+
+const WEBP_CONVERTIBLE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/avif', 'image/tiff']);
 
 @Injectable()
 export class MediaService {
@@ -22,15 +25,17 @@ export class MediaService {
 
   async create(file: Express.Multer.File, dto: UploadMediaDto = {}) {
     const apiPrefix = this.config.get<string>('API_PREFIX', 'api');
+    const uploadDir = this.config.get<string>('UPLOAD_DIR', './uploads');
+    const storedFile = await this.optimizeUpload(file, uploadDir);
     if (dto.folderId) await this.ensureFolderExists(dto.folderId);
     return this.prisma.mediaAsset.create({
       data: {
-        filename: file.filename,
+        filename: storedFile.filename,
         originalName: file.originalname,
         displayName: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
-        url: `/${apiPrefix}/uploads/${file.filename}`,
+        mimeType: storedFile.mimeType,
+        size: storedFile.size,
+        url: `/${apiPrefix}/uploads/${storedFile.filename}`,
         folderId: dto.folderId,
       },
     });
@@ -81,5 +86,28 @@ export class MediaService {
   private async ensureFolderExists(id: number) {
     const folder = await this.prisma.mediaFolder.findUnique({ where: { id } });
     if (!folder) throw new BadRequestException('Folder does not exist');
+  }
+
+  private async optimizeUpload(file: Express.Multer.File, uploadDir: string) {
+    if (!WEBP_CONVERTIBLE_MIME_TYPES.has(file.mimetype)) {
+      return { filename: file.filename, mimeType: file.mimetype, size: file.size };
+    }
+
+    const source = join(process.cwd(), uploadDir, file.filename);
+    const targetName = `${parse(file.filename).name}.webp`;
+    const target = join(process.cwd(), uploadDir, targetName);
+    const quality = Math.min(100, Math.max(1, Number(this.config.get<string>('MEDIA_WEBP_QUALITY', '82')) || 82));
+
+    try {
+      await sharp(source)
+        .rotate()
+        .webp({ quality, effort: 5 })
+        .toFile(target);
+      await unlink(source).catch(() => undefined);
+      const output = await stat(target);
+      return { filename: targetName, mimeType: 'image/webp', size: output.size };
+    } catch {
+      return { filename: file.filename, mimeType: file.mimetype, size: file.size };
+    }
   }
 }

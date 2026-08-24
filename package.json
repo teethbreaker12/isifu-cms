@@ -16,6 +16,7 @@
     "db:generate": "npm run prisma:generate --prefix isifu-cms-backend",
     "db:migrate": "npm run prisma:migrate --prefix isifu-cms-backend",
     "db:deploy": "npm run prisma:deploy --prefix isifu-cms-backend",
+    "media:convert-webp": "npm run media:convert-webp --prefix isifu-cms-backend",
     "seed": "npm run seed --prefix isifu-cms-backend"
   },
   "devDependencies": {
