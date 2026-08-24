@@ -81,12 +81,10 @@ export function SelectField({
       const left = Math.min(Math.max(rect.left, viewportPadding), window.innerWidth - width - viewportPadding);
       const below = window.innerHeight - rect.bottom - viewportPadding - gap;
       const above = rect.top - viewportPadding - gap;
-      const openBelow = below >= 120 || below >= above;
-      const availableHeight = Math.max(openBelow ? below : above, 120);
-      const maxHeight = Math.min(288, availableHeight);
-      const top = openBelow
-        ? Math.min(rect.bottom + gap, window.innerHeight - maxHeight - viewportPadding)
-        : Math.max(viewportPadding, rect.top - gap - maxHeight);
+      const openBelow = below >= 160 || below >= above;
+      const availableHeight = openBelow ? below : above;
+      const maxHeight = Math.max(96, Math.min(288, availableHeight));
+      const top = openBelow ? rect.bottom + gap : rect.top - gap - maxHeight;
 
       setPanelPosition({ top, left, width, maxHeight });
     };

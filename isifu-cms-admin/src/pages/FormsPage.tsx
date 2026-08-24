@@ -59,6 +59,7 @@ export function FormsPage() {
     const [fields, setFields] = useState<FormField[]>([{ ...emptyField }]);
     const [error, setError] = useState("");
     const [deleteKey, setDeleteKey] = useState<string | null>(null);
+    const [deleteSubmission, setDeleteSubmission] = useState<FormSubmission | null>(null);
     const [submissionView, setSubmissionView] = useState<"pretty" | "json">("pretty");
     const admin = isAdmin();
     const selected = forms.find((form) => form.key === selectedKey);
@@ -177,6 +178,18 @@ export function FormsPage() {
             if (editingKey === keyToDelete) resetForm();
             await load();
             notify(t("forms.deleted"));
+        } catch (caught) {
+            notify(caught instanceof Error ? caught.message : "Delete failed", "error");
+        }
+    }
+
+    async function removeSubmission(submission: FormSubmission) {
+        if (!selectedKey) return;
+        try {
+            await api.deleteFormSubmission(selectedKey, submission.id);
+            setDeleteSubmission(null);
+            setSubmissions((current) => current.filter((item) => item.id !== submission.id));
+            notify(t("forms.submissionDeleted"));
         } catch (caught) {
             notify(caught instanceof Error ? caught.message : "Delete failed", "error");
         }
@@ -554,6 +567,16 @@ export function FormsPage() {
                         : t("forms.submissions")
                 }
             >
+                {forms.length > 0 && (
+                    <div className="mb-4 grid gap-1 text-sm font-medium text-stone-700 sm:max-w-md">
+                        <span>{t("forms.submissionFormLabel")}</span>
+                        <SelectField
+                            value={selectedKey}
+                            options={forms.map((form) => ({ value: form.key, label: form.name }))}
+                            onChange={setSelectedKey}
+                        />
+                    </div>
+                )}
                 {!selected && (
                     <p className="text-sm text-stone-500">
                         {t("forms.noForm")}
@@ -598,7 +621,7 @@ export function FormsPage() {
                                 className="grid gap-3 rounded-lg border border-stone-200 bg-white p-4 text-sm"
                             >
                                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                                    <div className="min-w-0">
+                                    <div className="min-w-0 flex-1">
                                         <div className="font-semibold text-stone-950">
                                             {new Date(
                                                 submission.createdAt,
@@ -634,6 +657,7 @@ export function FormsPage() {
                                             </div>
                                         </div>
                                     )}
+                                    <IconButton label={t("forms.deleteSubmission")} icon={<Trash2 size={16} />} tone="danger" onClick={() => setDeleteSubmission(submission)} />
                                 </div>
                                 {submissionView === "json" ? (
                                     <pre className="max-h-96 overflow-auto rounded-md bg-stone-50 p-3 text-xs leading-5 text-stone-700">
@@ -680,6 +704,25 @@ export function FormsPage() {
                     }
                 >
                     <p className="text-sm leading-6 text-stone-600">{t("forms.deleteConfirm")}</p>
+                </Modal>
+            )}
+            {deleteSubmission && (
+                <Modal
+                    title={t("forms.deleteSubmission")}
+                    description={new Date(deleteSubmission.createdAt).toLocaleString()}
+                    onClose={() => setDeleteSubmission(null)}
+                    footer={
+                        <>
+                            <button type="button" className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700" onClick={() => setDeleteSubmission(null)}>
+                                {t("common.cancel")}
+                            </button>
+                            <button type="button" className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" onClick={() => void removeSubmission(deleteSubmission)}>
+                                {t("common.delete")}
+                            </button>
+                        </>
+                    }
+                >
+                    <p className="text-sm leading-6 text-stone-600">{t("forms.deleteSubmissionConfirm")}</p>
                 </Modal>
             )}
         </div>

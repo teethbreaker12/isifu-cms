@@ -33,7 +33,12 @@ function webpFilename(filename) {
   return `${parsed.name}.webp`;
 }
 
-const WEBP_CONVERTIBLE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/avif', 'image/tiff']);
+function extension(filename) {
+  return parse(filename).ext.toLowerCase().replace(/^\./, '');
+}
+
+const WEBP_CONVERTIBLE_MIME_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/avif', 'image/tiff']);
+const WEBP_CONVERTIBLE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'avif', 'tif', 'tiff']);
 
 loadEnv();
 
@@ -50,15 +55,24 @@ const deleteOriginals = process.env.MEDIA_WEBP_DELETE_ORIGINALS === 'true';
 await mkdir(uploadDir, { recursive: true });
 
 let converted = 0;
-let skipped = 0;
+let skippedWebp = 0;
+let skippedUnsupported = 0;
 let missing = 0;
 
 try {
   const assets = await prisma.mediaAsset.findMany({ orderBy: { id: 'asc' } });
+  console.log(`Scanning ${assets.length} media assets in ${uploadDir}`);
 
   for (const asset of assets) {
-    if (!WEBP_CONVERTIBLE_MIME_TYPES.has(asset.mimeType)) {
-      skipped += 1;
+    const ext = extension(asset.filename);
+    if (asset.mimeType === 'image/webp' || ext === 'webp') {
+      skippedWebp += 1;
+      continue;
+    }
+
+    if (!WEBP_CONVERTIBLE_MIME_TYPES.has(asset.mimeType) && !WEBP_CONVERTIBLE_EXTENSIONS.has(ext)) {
+      console.log(`Skipped media #${asset.id}: unsupported type ${asset.mimeType} (${asset.filename})`);
+      skippedUnsupported += 1;
       continue;
     }
 
@@ -122,4 +136,4 @@ try {
   await prisma.$disconnect();
 }
 
-console.log(`WebP media conversion complete. Converted: ${converted}, skipped: ${skipped}, missing: ${missing}.`);
+console.log(`WebP media conversion complete. Converted: ${converted}, already WebP: ${skippedWebp}, unsupported: ${skippedUnsupported}, missing: ${missing}.`);

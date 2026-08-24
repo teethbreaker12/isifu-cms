@@ -228,6 +228,7 @@ export const api = {
     request<ContactForm>(`/forms/${key}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteForm: (key: string) => request<ContactForm>(`/forms/${key}`, { method: 'DELETE' }),
   formSubmissions: (key: string) => request<FormSubmission[]>(`/forms/${key}/submissions`),
+  deleteFormSubmission: (key: string, id: number) => request<FormSubmission>(`/forms/${key}/submissions/${id}`, { method: 'DELETE' }),
   submitForm: (key: string, data: Record<string, unknown>) =>
     request<{ ok: true; submissionId: number; notificationSent: boolean; responseSent: boolean; message: string }>(`/forms/${key}/submit`, {
       method: 'POST',

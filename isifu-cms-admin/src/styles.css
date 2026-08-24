@@ -251,7 +251,7 @@ select {
 
 .select-field__panel {
   position: fixed;
-  z-index: 60;
+  z-index: 1200;
   max-height: min(18rem, 46vh);
   overflow: auto;
   border: 1px solid var(--app-border);

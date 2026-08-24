@@ -74,6 +74,23 @@ export class FormsService {
     }));
   }
 
+  async removeSubmission(key: string, id: number) {
+    const form = await this.findByKey(key);
+    const [submission] = await this.prisma.$queryRawUnsafe<FormSubmissionRow[]>(
+      'SELECT * FROM `FormSubmission` WHERE `id` = ? AND `formId` = ? LIMIT 1',
+      id,
+      form.id,
+    );
+    if (!submission) throw new NotFoundException('Submission not found');
+    await this.prisma.$executeRawUnsafe('DELETE FROM `FormSubmission` WHERE `id` = ?', id);
+    return {
+      ...submission,
+      data: this.parseJson(submission.data),
+      notificationSent: Boolean(submission.notificationSent),
+      responseSent: Boolean(submission.responseSent),
+    };
+  }
+
   async create(dto: UpsertFormDto) {
     this.validateForm(dto);
     return this.prisma.$transaction(async (tx) => {
