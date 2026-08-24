@@ -41,7 +41,6 @@ export function SettingsPage() {
   const [totpCode, setTotpCode] = useState('');
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [smtp, setSmtp] = useState<SmtpSettings & { hasPassword?: boolean; source?: 'database' | 'env' }>(emptySmtpSettings);
-  const [testRecipient, setTestRecipient] = useState('');
   const [smtpBusy, setSmtpBusy] = useState(false);
 
   async function refreshCurrentUser() {
@@ -59,7 +58,6 @@ export function SettingsPage() {
     api.smtpSettings()
       .then((settings) => {
         setSmtp({ ...settings, pass: '' });
-        setTestRecipient(settings.fromEmail || settings.user || '');
       })
       .catch((caught) => notify(caught instanceof Error ? caught.message : 'Could not load SMTP settings', 'error'));
   }, [admin, notify]);
@@ -135,7 +133,7 @@ export function SettingsPage() {
   async function testSmtp() {
     setSmtpBusy(true);
     try {
-      await api.testSmtpSettings({ ...smtp, testRecipient });
+      await api.testSmtpSettings(smtp);
       notify(t('settings.smtpTestSent'));
     } catch (caught) {
       notify(caught instanceof Error ? caught.message : 'SMTP test failed', 'error');
@@ -271,12 +269,8 @@ export function SettingsPage() {
                 </label>
               </div>
               <div className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50/70 p-3">
-                <label className="grid gap-1 text-sm font-medium text-stone-700">
-                  <span>{t('settings.smtpTestRecipient')}</span>
-                  <input className="rounded-md border border-stone-300 bg-white px-3 py-2 font-normal" type="email" value={testRecipient} onChange={(event) => setTestRecipient(event.target.value)} placeholder="admin@domain.com" />
-                </label>
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  <button type="button" disabled={smtpBusy || !testRecipient} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 disabled:opacity-50 sm:w-fit" onClick={testSmtp}>
+                  <button type="button" disabled={smtpBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 disabled:opacity-50 sm:w-fit" onClick={testSmtp}>
                     <Send size={16} />
                     {t('settings.smtpTest')}
                   </button>

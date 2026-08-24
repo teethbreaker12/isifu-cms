@@ -35,7 +35,4 @@ export class UpdateSmtpSettingsDto {
   fromEmail?: string;
 }
 
-export class TestSmtpSettingsDto extends UpdateSmtpSettingsDto {
-  @IsEmail()
-  testRecipient: string;
-}
+export class TestSmtpSettingsDto extends UpdateSmtpSettingsDto {}

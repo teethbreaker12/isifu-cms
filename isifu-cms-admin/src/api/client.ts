@@ -178,7 +178,7 @@ export const api = {
   smtpSettings: () => request<SmtpSettings & { hasPassword: boolean; source: 'database' | 'env' }>('/settings/smtp'),
   updateSmtpSettings: (body: SmtpSettings) =>
     request<SmtpSettings & { hasPassword: boolean; source: 'database' | 'env' }>('/settings/smtp', { method: 'PUT', body: JSON.stringify(body) }),
-  testSmtpSettings: (body: SmtpSettings & { testRecipient: string }) =>
+  testSmtpSettings: (body: SmtpSettings) =>
     request<{ ok: true }>('/settings/smtp/test', { method: 'POST', body: JSON.stringify(body) }),
   contentTypes: () => request<ContentType[]>('/content-types'),
   createContentType: (body: Partial<ContentType>) =>

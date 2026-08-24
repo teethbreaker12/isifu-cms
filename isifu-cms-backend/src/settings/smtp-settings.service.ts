@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as nodemailer from 'nodemailer';
 import { PrismaService } from '../prisma/prisma.service';
 import { TestSmtpSettingsDto, UpdateSmtpSettingsDto } from './dto';
 
@@ -12,13 +13,6 @@ export type SmtpConfig = {
   pass?: string;
   fromName?: string;
   fromEmail?: string;
-};
-
-type Mailer = {
-  createTransport: (options: Record<string, unknown>) => {
-    sendMail: (message: Record<string, unknown>) => Promise<unknown>;
-    verify?: () => Promise<unknown>;
-  };
 };
 
 type StoredSmtpSettings = {
@@ -87,28 +81,30 @@ export class SmtpSettingsService {
   async test(dto: TestSmtpSettingsDto) {
     const existing = await this.prisma.smtpSettings.findUnique({ where: { id: SMTP_SETTINGS_ID } });
     const config = this.normalizeDto(dto, existing?.pass || undefined);
-    await this.sendMail(config, {
-      to: dto.testRecipient,
-      subject: 'ISIFU CMS SMTP test',
-      text: 'SMTP configuration test from ISIFU CMS completed successfully.',
-      html: '<p>SMTP configuration test from <strong>ISIFU CMS</strong> completed successfully.</p>',
-    });
+    await this.verifyConnection(config);
     return { ok: true };
   }
 
   async sendMail(config: SmtpConfig, message: { to: string; subject: string; text: string; html: string }) {
+    const transporter = this.createTransport(config);
+    await transporter.sendMail({ from: this.fromAddress(config), ...message });
+  }
+
+  async verifyConnection(config: SmtpConfig) {
+    const transporter = this.createTransport(config);
+    await transporter.verify();
+  }
+
+  private createTransport(config: SmtpConfig) {
     if (!config.enabled) throw new BadRequestException('SMTP is disabled');
     if (!config.host) throw new BadRequestException('SMTP host is required');
-    const nodemailer = this.loadMailer();
-    if (!nodemailer) throw new BadRequestException('Nodemailer is not available');
 
-    const transporter = nodemailer.createTransport({
+    return nodemailer.createTransport({
       host: config.host,
       port: config.port,
       secure: config.secure,
       auth: config.user && config.pass ? { user: config.user, pass: config.pass } : undefined,
     });
-    await transporter.sendMail({ from: this.fromAddress(config), ...message });
   }
 
   private normalizeDto(dto: UpdateSmtpSettingsDto, currentPassword?: string): SmtpConfig {
@@ -167,14 +163,5 @@ export class SmtpSettingsService {
   private clean(value?: string) {
     const next = value?.trim();
     return next || undefined;
-  }
-
-  private loadMailer(): Mailer | null {
-    try {
-      const load = new Function('moduleName', 'return require(moduleName)') as (moduleName: string) => unknown;
-      return load('nodemailer') as Mailer;
-    } catch {
-      return null;
-    }
   }
 }
