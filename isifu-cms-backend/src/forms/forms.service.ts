@@ -316,13 +316,17 @@ export class FormsService {
     const subject = this.renderTemplate(form.notificationSubject || `Nowe zgłoszenie formularza: ${form.name}`, data);
     const rows = form.fields.map((field) => `${field.label}: ${this.formatValue(data[field.key])}`);
     const text = [`Formularz: ${form.name}`, `ID zgłoszenia: ${submissionId}`, '', ...rows].join('\n');
-    const html = [
-      `<p><strong>Formularz:</strong> ${this.escapeHtml(form.name)}</p>`,
-      `<p><strong>ID zgłoszenia:</strong> ${submissionId}</p>`,
-      '<table cellpadding="6" cellspacing="0" border="1" style="border-collapse:collapse">',
-      ...form.fields.map((field) => `<tr><th align="left">${this.escapeHtml(field.label)}</th><td>${this.escapeHtml(this.formatValue(data[field.key]))}</td></tr>`),
-      '</table>',
-    ].join('');
+    const html = this.emailLayout({
+      title: 'Nowe zgłoszenie formularza',
+      eyebrow: 'ISIFU CMS',
+      intro: `Otrzymano nowe zgłoszenie z formularza "${form.name}".`,
+      meta: [
+        ['Formularz', form.name],
+        ['ID zgłoszenia', String(submissionId)],
+        ['Data', new Date().toLocaleString('pl-PL')],
+      ],
+      body: this.submissionTable(form, data),
+    });
     return this.sendMail({
       to: form.recipientEmail,
       subject,
@@ -338,8 +342,107 @@ export class FormsService {
       to,
       subject,
       text: message,
-      html: this.escapeHtml(message).replace(/\n/g, '<br>'),
+      html: this.emailLayout({
+        title: subject,
+        eyebrow: 'ISIFU CMS',
+        intro: `Potwierdzenie zgłoszenia z formularza "${form.name}".`,
+        body: `<div style="font-size:15px;line-height:1.7;color:#44403c;">${this.escapeHtml(message).replace(/\n/g, '<br>')}</div>`,
+      }),
     });
+  }
+
+  private submissionTable(form: FormWithFields, data: Record<string, unknown>) {
+    const rows = form.fields
+      .map((field) => {
+        const value = this.escapeHtml(this.formatValue(data[field.key])) || '<span style="color:#a8a29e;">Brak danych</span>';
+        return [
+          '<tr>',
+          '<th style="width:34%;padding:12px 14px;border-bottom:1px solid #e7e5e4;text-align:left;vertical-align:top;font-size:12px;line-height:1.4;font-weight:700;text-transform:uppercase;color:#78716c;background:#fafaf9;">',
+          this.escapeHtml(field.label),
+          '</th>',
+          '<td style="padding:12px 14px;border-bottom:1px solid #e7e5e4;vertical-align:top;font-size:14px;line-height:1.6;color:#292524;">',
+          value.replace(/\n/g, '<br>'),
+          '</td>',
+          '</tr>',
+        ].join('');
+      })
+      .join('');
+
+    return [
+      '<table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;border-collapse:collapse;border:1px solid #e7e5e4;border-radius:8px;overflow:hidden;background:#ffffff;">',
+      rows,
+      '</table>',
+    ].join('');
+  }
+
+  private emailLayout(options: {
+    title: string;
+    eyebrow: string;
+    intro?: string;
+    meta?: Array<[string, string]>;
+    body: string;
+  }) {
+    const meta = options.meta?.length
+      ? [
+          '<table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;margin:0 0 18px;border-collapse:collapse;">',
+          ...options.meta.map(([label, value]) => [
+            '<tr>',
+            '<td style="padding:5px 0;width:140px;font-size:12px;line-height:1.4;text-transform:uppercase;font-weight:700;color:#78716c;">',
+            this.escapeHtml(label),
+            '</td>',
+            '<td style="padding:5px 0;font-size:14px;line-height:1.5;color:#292524;">',
+            this.escapeHtml(value),
+            '</td>',
+            '</tr>',
+          ].join('')),
+          '</table>',
+        ].join('')
+      : '';
+
+    return [
+      '<!doctype html>',
+      '<html>',
+      '<body style="margin:0;padding:0;background:#f5f5f4;font-family:Inter,Arial,sans-serif;color:#292524;">',
+      '<div style="display:none;max-height:0;overflow:hidden;color:transparent;">',
+      this.escapeHtml(options.title),
+      '</div>',
+      '<table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;border-collapse:collapse;background:#f5f5f4;">',
+      '<tr>',
+      '<td align="center" style="padding:32px 16px;">',
+      '<table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;max-width:680px;border-collapse:collapse;">',
+      '<tr>',
+      '<td style="padding:0 0 12px;font-size:12px;line-height:1.4;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#57534e;">',
+      this.escapeHtml(options.eyebrow),
+      '</td>',
+      '</tr>',
+      '<tr>',
+      '<td style="border:1px solid #e7e5e4;border-radius:8px;background:#ffffff;box-shadow:0 12px 30px rgba(41,37,36,.08);overflow:hidden;">',
+      '<div style="height:4px;background:#2563eb;"></div>',
+      '<div style="padding:26px 26px 8px;">',
+      '<h1 style="margin:0 0 10px;font-size:24px;line-height:1.25;font-weight:800;color:#1c1917;">',
+      this.escapeHtml(options.title),
+      '</h1>',
+      options.intro ? `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#57534e;">${this.escapeHtml(options.intro)}</p>` : '',
+      meta,
+      '</div>',
+      '<div style="padding:0 26px 26px;">',
+      options.body,
+      '</div>',
+      '</td>',
+      '</tr>',
+      '<tr>',
+      '<td style="padding:14px 2px 0;font-size:12px;line-height:1.6;color:#78716c;">',
+      'Wysłano z wykorzystaniem panelu administracyjnego ISIFU CMS. ',
+      '<a href="https://isifu.dev" style="color:#2563eb;text-decoration:none;font-weight:700;">isifu.dev</a>',
+      '</td>',
+      '</tr>',
+      '</table>',
+      '</td>',
+      '</tr>',
+      '</table>',
+      '</body>',
+      '</html>',
+    ].join('');
   }
 
   private async sendMail(message: { to: string; subject: string; text: string; html: string }) {
